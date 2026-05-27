@@ -1,0 +1,36 @@
+[package]
+name = "bldc-driver-async"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+embassy-executor = { version = "0.6.0", features = [
+  "arch-cortex-m",
+  "executor-thread",
+  "defmt",
+] }
+embassy-time = { version = "0.3.1", features = ["defmt"] }
+embassy-rp = { version = "0.1.0", features = [
+  "defmt",
+  "unstable-pac",
+  "time-driver",
+  "critical-section-impl",
+] }
+embassy-sync = "0.3"
+embassy-usb-logger = "0.2.0"
+embassy-usb = "0.2.0"
+
+panic-probe = { version = "0.3" }
+log = { version = "0.4" }
+static_cell = "2.1.1"
+portable-atomic = { version = "1.13", features = ["critical-section"] }
+
+embedded-hal = "1.0.0"
+embedded-hal-async = "1.0.0"
+embedded-io = "0.6.1"
+embedded-io-async = "0.6.1"
+embedded-storage = "0.3.1"
+
+cortex-m-rt = "0.7.5"
+cortex-m = "0.7.7"
+critical-section = { version = "1.1" }
