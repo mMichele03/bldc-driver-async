@@ -4,25 +4,22 @@
 use embassy_executor::Spawner;
 use embassy_rp::gpio::{Level, Output};
 use embassy_time::Timer;
-
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {
-        cortex_m::asm::bkpt();
-    }
-}
+use panic_probe as _;
 
 #[embassy_executor::main]
-async fn main(_spawner: Spawner) {
+async fn main(_spawner: Spawner) -> ! {
     let p = embassy_rp::init(Default::default());
-    // Onboard LED is typically on Pin 25 on the original Raspberry Pi Pico
-    let mut led = Output::new(p.PIN_25, Level::High);
+    let mut led = Output::new(p.PIN_25, Level::Low);
 
+    let mut counter = 0;
     loop {
-        led.set_level(Level::High);
-        Timer::after_millis(500).await;
+        counter += 1;
 
-        led.set_level(Level::Low);
-        Timer::after_millis(500).await;
+        led.set_level(if counter % 2 == 0 {
+            Level::High
+        } else {
+            Level::Low
+        });
+        Timer::after_millis(1000).await;
     }
 }
