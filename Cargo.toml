@@ -39,6 +39,8 @@ embassy-rp = { version = "0.4", features = [
   "rp235xa",
 ] }
 
+fixed = { version = "1.31.0" }
+
 [profile.release]
 debug = 2
 lto = true
