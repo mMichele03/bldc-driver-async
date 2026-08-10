@@ -1,0 +1,1 @@
+/home/mmic/workspace/bldc-driver-async/bldc-driver-core/target/thumbv8m.main-none-eabihf/debug/bldc-driver-async: /home/mmic/workspace/bldc-driver-async/bldc-driver-core/build.rs /home/mmic/workspace/bldc-driver-async/bldc-driver-core/memory.x /home/mmic/workspace/bldc-driver-async/bldc-driver-core/src/angle.rs /home/mmic/workspace/bldc-driver-async/bldc-driver-core/src/main.rs

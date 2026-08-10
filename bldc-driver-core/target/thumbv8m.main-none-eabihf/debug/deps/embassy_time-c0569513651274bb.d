@@ -1,0 +1,11 @@
+/home/mmic/workspace/bldc-driver-async/bldc-driver-core/target/thumbv8m.main-none-eabihf/debug/deps/embassy_time-c0569513651274bb.d: /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/lib.rs /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/fmt.rs /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/delay.rs /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/duration.rs /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/instant.rs /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/timer.rs /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/../README.md
+
+/home/mmic/workspace/bldc-driver-async/bldc-driver-core/target/thumbv8m.main-none-eabihf/debug/deps/libembassy_time-c0569513651274bb.rmeta: /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/lib.rs /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/fmt.rs /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/delay.rs /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/duration.rs /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/instant.rs /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/timer.rs /home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/../README.md
+
+/home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/lib.rs:
+/home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/fmt.rs:
+/home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/delay.rs:
+/home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/duration.rs:
+/home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/instant.rs:
+/home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/timer.rs:
+/home/mmic/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/embassy-time-0.4.0/src/../README.md:

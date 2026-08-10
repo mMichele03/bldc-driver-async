@@ -1,0 +1,4 @@
+cargo:rustc-link-search=/home/mmic/workspace/bldc-driver-async/bldc-driver-core/target/thumbv8m.main-none-eabihf/debug/build/bldc-driver-async-a5cad140046bcf86/out
+cargo:rerun-if-changed=memory.x
+cargo:rustc-link-arg-bins=--nmagic
+cargo:rustc-link-arg-bins=-Tlink.x
