@@ -128,3 +128,8 @@ async fn main(spawner: Spawner) -> ! {
     //         Timer::after_millis(10).await;
     //     }
 }
+
+// ticks 16384
+// rpm 2200 36.6666
+// 600746 ticks/s
+// 12000 Hz
