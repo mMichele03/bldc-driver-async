@@ -16,8 +16,8 @@ impl<const MAX_VALUE: i32> NormalizedValue<MAX_VALUE> {
         self.value * max / MAX_VALUE
     }
 
-    pub const fn scaled_positive(&self, center: i32) -> i32 {
-        self.scaled(center) + center
+    pub const fn scaled_positive(&self, center: u32) -> u32 {
+        self.scaled(center as i32) as u32 + center
     }
 }
 
@@ -122,13 +122,6 @@ impl<const BITS: usize> IntAngle<BITS> {
             value: self.value + Self::A90.value,
         }
         .sin()
-    }
-
-    pub fn bldc_3pwm(&self, scale: i32) -> (i32, i32, i32) {
-        let a = self.sin().scaled_positive(scale);
-        let b = (*self + Self::A120).sin().scaled_positive(scale);
-        let c = (*self + Self::A240).sin().scaled_positive(scale);
-        (a, b, c)
     }
 }
 
