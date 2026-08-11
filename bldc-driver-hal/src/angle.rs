@@ -16,8 +16,11 @@ impl<const MAX_VALUE: i32> NormalizedValue<MAX_VALUE> {
         self.value * max / MAX_VALUE
     }
 
-    pub const fn scaled_positive(&self, center: u32) -> u32 {
-        self.scaled(center as i32) as u32 + center
+    // pub const fn scaled_positive(&self, center: u32) -> u32 {
+    //     self.scaled(center as i32) as u32 + center
+    // }
+    pub const fn scaled_positive(&self, center: i32) -> i32 {
+        self.scaled(center) + center
     }
 }
 
