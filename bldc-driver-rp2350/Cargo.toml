@@ -19,3 +19,26 @@ embedded-storage = { workspace = true }
 embassy-executor = { workspace = true }
 embassy-sync = { workspace = true }
 embassy-time = { workspace = true }
+
+cortex-m-rt = "0.7.3"
+cortex-m = { version = "0.7.6" }
+embassy-rp = { version = "0.4", features = [
+  "unstable-pac",
+  "time-driver",
+  "critical-section-impl",
+  "rp235xa",
+] }
+
+fixed = { version = "1.31.0" }
+
+bldc-driver-hal = { path = "../bldc-driver-hal" }
+
+[profile.release]
+debug = 2
+lto = true
+opt-level = 'z'
+
+[profile.dev]
+debug = 2
+lto = true
+opt-level = "z"
