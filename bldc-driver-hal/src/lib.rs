@@ -52,28 +52,16 @@ pub trait BldcMotor<const BITS: usize> {
 
     /// Set the motor pwm according to the given angle, scaling the sinusoids magnitude (max is PWM_TOP)
     fn set_magnetic_field(&mut self, angle: IntAngle<BITS>, magnitude: u32) {
-        debug!("mag u32: {} i32: {}", magnitude, magnitude as i32);
+        let half_magnitude = magnitude.min(Self::PWM_TOP) / 2;
 
-        let half_magnitude = (magnitude.min(Self::PWM_TOP) / 2) as i32;
-
-        debug!("half mag i32: {}", half_magnitude);
-
-        let a = angle.sin().scaled_positive(half_magnitude);
-
-        debug!("pwm a: {}", a);
-
+        let a = angle.sin_positive().scaled(half_magnitude);
         let b = (angle + IntAngle::A120)
-            .sin()
-            .scaled_positive(half_magnitude);
-
-        debug!("pwm b: {}", b);
-
+            .sin_positive()
+            .scaled(half_magnitude);
         let c = (angle + IntAngle::A240)
-            .sin()
-            .scaled_positive(half_magnitude);
+            .sin_positive()
+            .scaled(half_magnitude);
 
-        debug!("pwm c: {}", c);
-
-        self.set_pwm(a as u32, b as u32, c as u32);
+        self.set_pwm(a, b, c);
     }
 }

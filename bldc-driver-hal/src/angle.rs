@@ -15,12 +15,22 @@ impl<const MAX_VALUE: i32> NormalizedValue<MAX_VALUE> {
     pub const fn scaled(&self, max: i32) -> i32 {
         self.value * max / MAX_VALUE
     }
+}
 
-    // pub const fn scaled_positive(&self, center: u32) -> u32 {
-    //     self.scaled(center as i32) as u32 + center
-    // }
-    pub const fn scaled_positive(&self, center: i32) -> i32 {
-        self.scaled(center) + center
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct NormalizedUnsignedValue<const MAX_VALUE: u32 = 255> {
+    value: u32,
+}
+
+impl<const MAX_VALUE: u32> NormalizedUnsignedValue<MAX_VALUE> {
+    pub fn new(value: u32) -> Self {
+        Self {
+            value: value.clamp(0, MAX_VALUE),
+        }
+    }
+
+    pub const fn scaled(&self, max: u32) -> u32 {
+        self.value * max / MAX_VALUE
     }
 }
 
@@ -29,6 +39,7 @@ pub struct IntAngle<const BITS: usize> {
     value: i32,
 }
 const SIN_MAX: i32 = 255;
+const DOUBLE_SIN_MAX: u32 = 2 * (SIN_MAX as u32);
 
 impl<const BITS: usize> IntAngle<BITS> {
     pub const MAX_VALUE: i32 = 1 << BITS;
@@ -125,6 +136,20 @@ impl<const BITS: usize> IntAngle<BITS> {
             value: self.value + Self::A90.value,
         }
         .sin()
+    }
+
+    pub const fn sin_positive(&self) -> NormalizedUnsignedValue<DOUBLE_SIN_MAX> {
+        // The computed value is always non-negative
+        let value = (self.sin_lookup() + SIN_MAX) as u32;
+
+        NormalizedUnsignedValue { value }
+    }
+
+    pub const fn cos_positive(&self) -> NormalizedUnsignedValue<DOUBLE_SIN_MAX> {
+        Self {
+            value: self.value + Self::A90.value,
+        }
+        .sin_positive()
     }
 }
 
