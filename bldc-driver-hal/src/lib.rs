@@ -3,10 +3,10 @@
 mod angle;
 
 pub use angle::IntAngle;
+use embassy_executor::Spawner;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::watch::Receiver;
+use embassy_sync::watch::{Receiver, Sender, Watch};
 use embassy_time::Instant;
-use log::debug;
 
 /// Data returned by a single encoder reading
 #[derive(Debug, Clone, Copy)]
@@ -17,8 +17,11 @@ pub struct EncoderData<const BITS: usize> {
 }
 
 /// Consumer for the Encoder Data coming from the sensor's data stream
-pub type EncoderReceiver<'a, const BITS: usize> =
-    Receiver<'a, CriticalSectionRawMutex, EncoderData<BITS>, 1>;
+pub type EncoderReceiver<const BITS: usize> =
+    Receiver<'static, CriticalSectionRawMutex, EncoderData<BITS>, 1>;
+pub type EncoderSender<const BITS: usize> =
+    Sender<'static, CriticalSectionRawMutex, EncoderData<BITS>, 1>;
+pub type EncoderWatch<const BITS: usize> = Watch<CriticalSectionRawMutex, EncoderData<BITS>, 1>;
 
 /// Encoder with an arbitrary number of the angle precision BITS
 ///
@@ -35,8 +38,11 @@ pub type EncoderReceiver<'a, const BITS: usize> =
 /// }
 /// ```
 pub trait Encoder<const BITS: usize> {
+    /// The frequency at which the encoder samples data
+    const ENCODER_FREQUENCY_HZ: u32;
+
     /// Starts a stream of readings, returns immediately the read frequency and the watch receiver
-    fn read_stream(&self) -> (u32, EncoderReceiver<'_, BITS>);
+    fn read_stream(self, spawner: Spawner) -> EncoderReceiver<BITS>;
 }
 
 /// BLDC motor controlled by 3-phase PWM
