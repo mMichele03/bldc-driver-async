@@ -127,7 +127,7 @@ impl Encoder<ENCODER_BITS> for SpiEncoder {
     const ENCODER_FREQUENCY_HZ: u32 = 10000;
 
     fn read_stream(self, spawner: Spawner) -> EncoderReceiver<ENCODER_BITS> {
-        spawner.spawn(encoder_task(self, WATCH.sender())).unwrap();
+        spawner.spawn(encoder_task(self, WATCH.sender()).expect("Failed to allocate encoder task"));
 
         WATCH.receiver().unwrap()
     }

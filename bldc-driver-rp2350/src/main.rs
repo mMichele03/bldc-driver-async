@@ -33,7 +33,7 @@ async fn main(spawner: Spawner) -> ! {
     let _led = Output::new(p.PIN_25, Level::Low);
 
     let driver = usb::Driver::new(p.USB, Irqs);
-    spawner.spawn(logger_task(driver)).unwrap();
+    spawner.spawn(logger_task(driver).expect("Failed to create logger task"));
 
     let mut angle = EncoderAngle::new(0);
     const PERIOD_US: u64 = 5;
