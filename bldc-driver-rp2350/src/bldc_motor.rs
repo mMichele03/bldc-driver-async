@@ -7,14 +7,14 @@ use fixed::FixedU16;
 use fixed::types::extra::U4;
 use log::info;
 
-pub struct RpBldcMotor<'a> {
-    pwm_ab: Pwm<'a>,
-    pwm_c: Pwm<'a>,
-    en: Output<'a>,
+pub struct RpBldcMotor {
+    pwm_ab: Pwm<'static>,
+    pwm_c: Pwm<'static>,
+    _en: Output<'static>,
 }
 
-impl<'a> RpBldcMotor<'a> {
-    const PWM_TOP: u32 = 1250;
+impl RpBldcMotor {
+    pub const PWM_TOP: u32 = 1250;
 
     pub fn new(
         pin_6: PIN_6,
@@ -24,7 +24,7 @@ impl<'a> RpBldcMotor<'a> {
         slice_3: PWM_SLICE3,
         slice_4: PWM_SLICE4,
     ) -> Self {
-        let en = Output::new(pin_9, Level::High);
+        let _en = Output::new(pin_9, Level::High);
 
         let mut config = Config::default();
         config.phase_correct = true;
@@ -34,11 +34,11 @@ impl<'a> RpBldcMotor<'a> {
         let pwm_ab = Pwm::new_output_ab(slice_3, pin_6, pin_7, config.clone());
         let pwm_c = Pwm::new_output_a(slice_4, pin_8, config);
 
-        Self { pwm_ab, pwm_c, en }
+        Self { pwm_ab, pwm_c, _en }
     }
 }
 
-impl<'a> BldcMotor<ENCODER_BITS> for RpBldcMotor<'a> {
+impl BldcMotor<ENCODER_BITS> for RpBldcMotor {
     const PWM_TOP: u32 = RpBldcMotor::PWM_TOP;
 
     const PWM_FREQ: u32 = 60000;
