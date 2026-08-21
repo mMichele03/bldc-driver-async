@@ -20,4 +20,6 @@ embassy-executor = { workspace = true }
 embassy-sync = { workspace = true }
 embassy-time = { workspace = true }
 
+heapless = { workspace = true }
+
 bldc-driver-hal = { path = "../bldc-driver-hal" }

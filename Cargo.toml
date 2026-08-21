@@ -8,6 +8,8 @@ embassy-usb-logger = "0.6"
 embassy-usb = "0.6"
 log = { version = "0.4" }
 
+heapless = { version = "0.9.3" }
+
 embedded-hal = "1.0.0"
 embedded-hal-async = "1.0.0"
 embedded-io = "0.6.1"
