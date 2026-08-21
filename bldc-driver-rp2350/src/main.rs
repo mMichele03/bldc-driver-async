@@ -1,12 +1,12 @@
 #![no_std]
 #![no_main]
 
-use bldc_driver_hal::{BldcMotor, Encoder};
+use bldc_driver_hal::BldcMotor;
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Level, Output};
-use embassy_rp::peripherals::USB;
-use embassy_rp::usb::{Driver, InterruptHandler};
+use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, USB};
+use embassy_rp::usb;
 use embassy_time::Timer;
 use log::info;
 use panic_probe as _;
@@ -18,11 +18,12 @@ mod bldc_motor;
 mod encoder;
 
 bind_interrupts!(struct Irqs {
-    USBCTRL_IRQ => InterruptHandler<USB>;
+    USBCTRL_IRQ => usb::InterruptHandler<USB>;
+    DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>;
 });
 
 #[embassy_executor::task]
-async fn logger_task(driver: Driver<'static, USB>) {
+async fn logger_task(driver: usb::Driver<'static, USB>) {
     embassy_usb_logger::run!(1024, log::LevelFilter::Info, driver);
 }
 
@@ -31,7 +32,7 @@ async fn main(spawner: Spawner) -> ! {
     let p = embassy_rp::init(Default::default());
     let _led = Output::new(p.PIN_25, Level::Low);
 
-    let driver = Driver::new(p.USB, Irqs);
+    let driver = usb::Driver::new(p.USB, Irqs);
     spawner.spawn(logger_task(driver)).unwrap();
 
     let mut angle = EncoderAngle::new(0);
@@ -50,7 +51,7 @@ async fn main(spawner: Spawner) -> ! {
     );
 
     let mut encoder = SpiEncoder::new(
-        p.PIN_2, p.PIN_3, p.PIN_4, p.PIN_5, p.SPI0, p.DMA_CH0, p.DMA_CH1,
+        p.PIN_2, p.PIN_3, p.PIN_4, p.PIN_5, p.SPI0, p.DMA_CH0, p.DMA_CH1, Irqs,
     );
 
     // let mut rec = encoder.read_stream(spawner);
@@ -61,13 +62,13 @@ async fn main(spawner: Spawner) -> ! {
 
     loop {
         // while let Some(val) = rec.try_changed() {
-        //     info!("[{}] value: {}", val.timestamp, val.angle);
+        // info!("[{}] value: {}", val.timestamp, val.angle);
         // }
 
-        // motor.set_magnetic_field(angle, RpBldcMotor::PWM_TOP / 2);
+        motor.set_magnetic_field(angle, RpBldcMotor::PWM_TOP / 2);
 
-        // angle += delta_angle;
-        // angle.normalize();
+        angle += delta_angle;
+        angle.normalize();
 
         let data = encoder.read_value().await;
         info!("value: {}", data.angle);

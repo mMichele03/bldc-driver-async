@@ -5,10 +5,11 @@ use bldc_driver_hal::{
 use embassy_executor::Spawner;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIN_2, PIN_3, PIN_4, PIN_5, SPI0};
+use embassy_rp::{Peri, dma, interrupt};
 
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::watch::Watch;
-use embassy_time::{Duration, Instant, Timer};
+use embassy_time::{Instant, Timer};
 use log::info;
 
 /// AS5048A Spi Magnetic encoder
@@ -19,13 +20,20 @@ pub struct SpiEncoder {
 
 impl SpiEncoder {
     pub fn new(
-        pin_2: PIN_2,
-        pin_3: PIN_3,
-        pin_4: PIN_4,
-        pin_5: PIN_5,
-        spi_0: SPI0,
-        dma_ch0: DMA_CH0,
-        dma_ch1: DMA_CH1,
+        pin_2: Peri<'static, PIN_2>,
+        pin_3: Peri<'static, PIN_3>,
+        pin_4: Peri<'static, PIN_4>,
+        pin_5: Peri<'static, PIN_5>,
+        spi_0: Peri<'static, SPI0>,
+        dma_ch0: Peri<'static, DMA_CH0>,
+        dma_ch1: Peri<'static, DMA_CH1>,
+        irq: impl interrupt::typelevel::Binding<
+            interrupt::typelevel::DMA_IRQ_0,
+            dma::InterruptHandler<DMA_CH0>,
+        > + interrupt::typelevel::Binding<
+            interrupt::typelevel::DMA_IRQ_0,
+            dma::InterruptHandler<DMA_CH1>,
+        > + 'static,
     ) -> Self {
         let clk = pin_2;
         let mosi = pin_3;
@@ -36,7 +44,7 @@ impl SpiEncoder {
         spi_config.frequency = 10_000_000; // max 10 MHz (10_000_000)
         spi_config.phase = embassy_rp::spi::Phase::CaptureOnSecondTransition;
 
-        let spi = Spi::new(spi_0, clk, mosi, miso, dma_ch0, dma_ch1, spi_config);
+        let spi = Spi::new(spi_0, clk, mosi, miso, dma_ch0, dma_ch1, irq, spi_config);
 
         Self { cs, spi }
     }

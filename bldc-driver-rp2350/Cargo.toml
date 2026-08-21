@@ -22,7 +22,7 @@ embassy-time = { workspace = true }
 
 cortex-m-rt = "0.7.3"
 cortex-m = { version = "0.7.6" }
-embassy-rp = { version = "0.4", features = [
+embassy-rp = { version = "0.10.0", features = [
   "unstable-pac",
   "time-driver",
   "critical-section-impl",

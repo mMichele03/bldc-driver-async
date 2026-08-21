@@ -4,8 +4,8 @@ members = ["bldc-driver-core", "bldc-driver-hal", "bldc-driver-rp2350"]
 
 [workspace.dependencies]
 panic-probe = { version = "0.3" }
-embassy-usb-logger = "0.4.0"
-embassy-usb = "0.4.0"
+embassy-usb-logger = "0.6"
+embassy-usb = "0.6"
 log = { version = "0.4" }
 
 embedded-hal = "1.0.0"
