@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use bldc_driver_hal::BldcMotor;
+use bldc_driver_hal::{BldcMotor, Encoder};
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Level, Output};
@@ -53,20 +53,24 @@ async fn main(spawner: Spawner) -> ! {
         p.PIN_2, p.PIN_3, p.PIN_4, p.PIN_5, p.SPI0, p.DMA_CH0, p.DMA_CH1,
     );
 
+    // let mut rec = encoder.read_stream(spawner);
+
     info!("Hello World! {}", delta_angle);
 
     Timer::after_secs(1).await;
 
     loop {
-        let sos = encoder.read_value().await;
-        info!("[{}] value: {}", sos.timestamp, sos.angle);
+        // while let Some(val) = rec.try_changed() {
+        //     info!("[{}] value: {}", val.timestamp, val.angle);
+        // }
 
-        motor.set_magnetic_field(angle, RpBldcMotor::PWM_TOP / 2);
+        // motor.set_magnetic_field(angle, RpBldcMotor::PWM_TOP / 2);
 
-        angle += delta_angle;
-        angle.normalize();
+        // angle += delta_angle;
+        // angle.normalize();
 
-        info!("MOVE!");
+        let data = encoder.read_value().await;
+        info!("value: {}", data.angle);
 
         Timer::after_micros(PERIOD_US).await;
     }
