@@ -1,3 +1,3 @@
 #![no_std]
 
-mod telemetry;
+pub mod telemetry;
