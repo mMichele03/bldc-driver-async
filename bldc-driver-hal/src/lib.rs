@@ -7,6 +7,7 @@ use embassy_executor::Spawner;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::watch::{Receiver, Sender, Watch};
 use embassy_time::Instant;
+use heapless::Vec;
 
 /// Data returned by a single encoder reading
 #[derive(Debug, Clone, Copy)]
@@ -70,4 +71,10 @@ pub trait BldcMotor<const BITS: usize> {
 
         self.set_pwm(a, b, c);
     }
+}
+
+/// Flash intended to write telemetry data
+pub trait TelemetryFlash<Data, const SIZE: usize> {
+    /// Write data vec to flash
+    fn write_data_vec(&mut self, data: Vec<Data, SIZE>);
 }
