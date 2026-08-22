@@ -114,6 +114,7 @@ dependencies = [
  "embedded-io 0.6.1",
  "embedded-io-async 0.6.1",
  "embedded-storage",
+ "heapless 0.9.3",
  "log",
  "panic-probe",
 ]
@@ -122,6 +123,7 @@ dependencies = [
 name = "bldc-driver-rp2350"
 version = "0.1.0"
 dependencies = [
+ "bldc-driver-core",
  "bldc-driver-hal",
  "cortex-m",
  "cortex-m-rt",
@@ -137,6 +139,7 @@ dependencies = [
  "embedded-io-async 0.6.1",
  "embedded-storage",
  "fixed",
+ "heapless 0.9.3",
  "log",
  "panic-probe",
 ]

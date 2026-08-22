@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+use bldc_driver_core::telemetry::telemetry_run;
 use bldc_driver_hal::BldcMotor;
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
@@ -12,10 +13,12 @@ use log::info;
 use panic_probe as _;
 
 use crate::bldc_motor::RpBldcMotor;
-use crate::encoder::{EncoderAngle, SpiEncoder};
+use crate::encoder::{ENCODER_BITS, EncoderAngle, SpiEncoder, WATCH};
+use crate::flash::RpFlash;
 
 mod bldc_motor;
 mod encoder;
+mod flash;
 
 bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => usb::InterruptHandler<USB>;
@@ -25,6 +28,19 @@ bind_interrupts!(struct Irqs {
 #[embassy_executor::task]
 async fn logger_task(driver: usb::Driver<'static, USB>) {
     embassy_usb_logger::run!(1024, log::LevelFilter::Info, driver);
+}
+
+#[embassy_executor::task]
+async fn telemetry_task(flash: RpFlash, period_us: u64) {
+    telemetry_run::<{ ENCODER_BITS }, { RpFlash::BUFFER_SIZE }>(
+        period_us,
+        WATCH.receiver().unwrap(),
+        flash,
+    )
+    .await;
+
+    // telemetry end: blink led
+    todo!()
 }
 
 #[embassy_executor::main]

@@ -82,7 +82,7 @@ pub const ENCODER_BITS: usize = 14;
 
 pub type EncoderAngle = IntAngle<ENCODER_BITS>;
 
-static WATCH: EncoderWatch<ENCODER_BITS> = Watch::new();
+pub static WATCH: EncoderWatch<ENCODER_BITS> = Watch::new();
 
 #[embassy_executor::task]
 async fn encoder_task(mut encoder: SpiEncoder, sender: EncoderSender<ENCODER_BITS>) {
