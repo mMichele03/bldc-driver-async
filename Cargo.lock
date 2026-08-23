@@ -98,6 +98,7 @@ dependencies = [
  "heapless 0.9.3",
  "log",
  "panic-probe",
+ "zerocopy",
 ]
 
 [[package]]
@@ -138,6 +139,7 @@ dependencies = [
  "embedded-io 0.6.1",
  "embedded-io-async 0.6.1",
  "embedded-storage",
+ "embedded-storage-async",
  "fixed",
  "heapless 0.9.3",
  "log",

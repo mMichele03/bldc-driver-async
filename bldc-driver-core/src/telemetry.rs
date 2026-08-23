@@ -1,14 +1,35 @@
 use bldc_driver_hal::IntAngle;
 use bldc_driver_hal::TelemetryFlash;
+use core::slice;
 use embassy_time::Instant;
 use embassy_time::Timer;
 use heapless::Vec;
+use zerocopy::KnownLayout;
+use zerocopy::transmute_ref;
+use zerocopy::{FromBytes, Immutable, IntoBytes};
 
+#[repr(C)]
+#[derive(Clone, Copy, KnownLayout)]
+pub struct LocalIntAngle<const BITS: usize>(IntAngle<BITS>);
+
+/// Used u64 and not Instant for the timestamp because u64 implements the zerocopy traits.
+/// Total struct size: 24 bytes
+#[repr(C)]
+#[derive(Clone, Copy, FromBytes, KnownLayout)]
 pub struct TelemetryData<const BITS: usize> {
-    estimated_angle: IntAngle<BITS>,
-    measured_angle: IntAngle<BITS>,
-    timestamp: Instant,
-    speed_rpm: i32,
+    timestamp: u64,                  // 8 bytes
+    estimated_angle: IntAngle<BITS>, // 4 bytes
+    measured_angle: IntAngle<BITS>,  // 4 bytes
+    speed_rpm: i32,                  // 4 bytes
+    _padding: u32, // 4 bytes, used to make the struct size a multiple of the greatest alignment size (8 bytes)
+}
+
+impl<const BITS: usize> TelemetryData<BITS> {
+    pub fn as_bytes(&self) -> &[u8] {
+        let ptr = self as *const Self as *const u8;
+        let len = core::mem::size_of::<Self>(); // Struct dimension, 24 bytes
+        unsafe { slice::from_raw_parts(ptr, len) }
+    }
 }
 
 /// Telemetry task loop, intended to be run in an embassy task
@@ -22,7 +43,12 @@ pub struct TelemetryData<const BITS: usize> {
 ///     // handle telemetry end...
 /// }
 /// ```
-pub async fn telemetry_run<const ENCODER_BITS: usize, const BUFFER_SIZE: usize>(
+pub async fn telemetry_run<
+    const ENCODER_BITS: usize,
+    const BUFFER_SIZE: usize,
+    const FLASH_SIZE: usize,
+    const PAGE_SIZE: usize,
+>(
     period_us: u64,
     mut rx: bldc_driver_hal::EncoderReceiver<ENCODER_BITS>,
     mut flash: impl TelemetryFlash<TelemetryData<ENCODER_BITS>, BUFFER_SIZE>,
@@ -34,8 +60,9 @@ pub async fn telemetry_run<const ENCODER_BITS: usize, const BUFFER_SIZE: usize>(
             let data = TelemetryData {
                 estimated_angle: IntAngle::new(0),
                 measured_angle: reading.angle,
-                timestamp: Instant::now(),
+                timestamp: Instant::now().as_micros(),
                 speed_rpm: 0,
+                _padding: 0,
             };
             if buffer.push(data).is_err() {
                 break;

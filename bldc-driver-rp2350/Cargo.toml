@@ -33,6 +33,8 @@ fixed = { version = "1.31.0" }
 
 heapless = { workspace = true }
 
+embedded-storage-async = "0.4.1"
+
 bldc-driver-hal = { path = "../bldc-driver-hal" }
 bldc-driver-core = { path = "../bldc-driver-core" }
 

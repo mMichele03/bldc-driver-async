@@ -74,7 +74,9 @@ pub trait BldcMotor<const BITS: usize> {
 }
 
 /// Flash intended to write telemetry data
-pub trait TelemetryFlash<Data, const SIZE: usize> {
+/// I put the page size here so that the flash method automatically handles the alignment in multiples of the flash page
+/// when the divisor is not a divider of the page size
+pub trait TelemetryFlash<Data, const BUFFER_SIZE: usize> {
     /// Write data vec to flash
-    fn write_data_vec(&mut self, data: Vec<Data, SIZE>);
+    async fn write_data_vec(&mut self, data: Vec<Data, BUFFER_SIZE>);
 }

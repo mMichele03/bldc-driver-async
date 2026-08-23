@@ -32,11 +32,12 @@ async fn logger_task(driver: usb::Driver<'static, USB>) {
 
 #[embassy_executor::task]
 async fn telemetry_task(flash: RpFlash, period_us: u64) {
-    telemetry_run::<{ ENCODER_BITS }, { RpFlash::BUFFER_SIZE }>(
-        period_us,
-        WATCH.receiver().unwrap(),
-        flash,
-    )
+    telemetry_run::<
+        { ENCODER_BITS },
+        { RpFlash::BUFFER_SIZE },
+        { RpFlash::FLASH_SIZE },
+        { RpFlash::PAGE_SIZE },
+    >(period_us, WATCH.receiver().unwrap(), flash)
     .await;
 
     // telemetry end: blink led
