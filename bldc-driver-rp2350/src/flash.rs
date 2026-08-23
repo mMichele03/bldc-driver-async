@@ -7,7 +7,7 @@ use embassy_rp::{
     peripherals::{DMA_CH0, FLASH},
 };
 use embedded_storage_async::nor_flash::NorFlash;
-use heapless::Vec;
+use heapless::{String, Vec};
 
 use crate::ENCODER_BITS;
 
@@ -52,20 +52,22 @@ impl TelemetryFlash<TelemetryData<ENCODER_BITS>, { RpFlash::BUFFER_SIZE }> for R
     ) {
         const PAGE_SIZE: usize = RpFlash::PAGE_SIZE;
         const SECTOR_SIZE: usize = RpFlash::SECTOR_SIZE;
+        const ENTRY_LEN: usize = core::mem::size_of::<TelemetryData<ENCODER_BITS>>();
 
         let mut page_buffer = [0u8; PAGE_SIZE];
-        let mut buffer_offset = 0;
+        let mut page_offset = 0;
 
         for entry in data.iter() {
-            let entry_bytes = entry.as_bytes(); // 24 bytes
+            let csv_row = entry.into_csv_row();
+            let csv_row_bytes = csv_row.as_bytes();
 
             // Case in which the element exceeds the current 256 bytes page (we write and then reset the buffer_offset to write in a new one)
-            if buffer_offset + entry_bytes.len() > PAGE_SIZE {
+            if page_offset + ENTRY_LEN > PAGE_SIZE {
                 // If the page is at the beginning of a new sector, erase it and then write, else we can just write
                 // normally since we are in an erased sector already.
-                if (self.current_addr - Self::ADDR_OFFSET) as usize % SECTOR_SIZE == 0 {
-                    let offset = self.current_addr - Self::ADDR_OFFSET;
-                    self.erase_sector_at_offset(offset).await;
+                if (self.current_addr) as usize % SECTOR_SIZE == 0 {
+                    let offset = self.current_addr;
+                    self.erase_sector(offset).await;
                 }
 
                 // Write the complete 256 bytes page
@@ -77,24 +79,23 @@ impl TelemetryFlash<TelemetryData<ENCODER_BITS>, { RpFlash::BUFFER_SIZE }> for R
                 // Advance the flash address, reset the local buffer and reset the offest to 0
                 self.current_addr += PAGE_SIZE as u32;
                 page_buffer.fill(0);
-                buffer_offset = 0;
+                page_offset = 0;
             }
 
             // Copy the 24 bytes of the struct in the local page buffer
-            page_buffer[buffer_offset..buffer_offset + entry_bytes.len()]
-                .copy_from_slice(entry_bytes);
-            buffer_offset += entry_bytes.len();
+            page_buffer[page_offset..page_offset + ENTRY_LEN].copy_from_slice(csv_row_bytes);
+            page_offset += ENTRY_LEN;
         }
 
         // Now, we handle cases in which the number of bytes to write is not a multiple of the page size
-        if buffer_offset > 0 {
+        if page_offset > 0 {
             // Fill the buffer with 0s next to the actual data to be able to write a page
-            page_buffer[buffer_offset..].fill(0);
+            page_buffer[page_offset..].fill(0);
 
             // Same erase and write logic as before
-            if (self.current_addr - Self::ADDR_OFFSET) as usize % SECTOR_SIZE == 0 {
+            if (self.current_addr) as usize % SECTOR_SIZE == 0 {
                 let offset = self.current_addr - Self::ADDR_OFFSET;
-                self.erase_sector_at_offset(offset).await;
+                self.erase_sector(offset).await;
             }
 
             self.flash
@@ -109,19 +110,17 @@ impl TelemetryFlash<TelemetryData<ENCODER_BITS>, { RpFlash::BUFFER_SIZE }> for R
 }
 
 impl RpFlash {
-    pub async fn erase_sector_at_offset(&mut self, offset: u32) {
-        let addr = Self::ADDR_OFFSET + offset;
-
+    async fn erase_sector(&mut self, address: u32) {
         // Make sure that the address is aligned at 4 KB, so it marks the beginning of a sector
         debug_assert_eq!(
-            addr % Self::SECTOR_SIZE as u32,
+            address % Self::SECTOR_SIZE as u32,
             0,
             "The address is not aligned at 4 KB"
         );
 
         // Asynchronous erase of the flash sector
         self.flash
-            .erase(addr, addr + Self::SECTOR_SIZE as u32)
+            .erase(address, address + Self::SECTOR_SIZE as u32)
             .await
             .unwrap();
 

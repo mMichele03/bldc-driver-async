@@ -1,9 +1,12 @@
 use bldc_driver_hal::IntAngle;
 use bldc_driver_hal::TelemetryFlash;
+use core::fmt::Write;
 use core::slice;
 use embassy_time::Instant;
 use embassy_time::Timer;
+use heapless::String;
 use heapless::Vec;
+use heapless::string::StringInner;
 use zerocopy::KnownLayout;
 use zerocopy::transmute_ref;
 use zerocopy::{FromBytes, Immutable, IntoBytes};
@@ -24,11 +27,31 @@ pub struct TelemetryData<const BITS: usize> {
     _padding: u32, // 4 bytes, used to make the struct size a multiple of the greatest alignment size (8 bytes)
 }
 
+const CSV_ROW_BYTES: usize = 64; // number of bytes that can be used to represent a csv row of telemetry data 
+
+impl<const BITS: usize> TelemetryData<BITS> {
+    pub fn into_csv_row(&self) -> String<{ CSV_ROW_BYTES }> {
+        self.into()
+    }
+}
+
 impl<const BITS: usize> TelemetryData<BITS> {
     pub fn as_bytes(&self) -> &[u8] {
-        let ptr = self as *const Self as *const u8;
+        let ptr = (self as *const Self) as *const u8;
         let len = core::mem::size_of::<Self>(); // Struct dimension, 24 bytes
-        unsafe { slice::from_raw_parts(ptr, len) }
+        unsafe { slice::from_raw_parts(ptr, len) } // We create a slice of 24 u8 (bytes)
+    }
+}
+
+impl<const BITS: usize> From<&TelemetryData<BITS>> for String<{ CSV_ROW_BYTES }> {
+    fn from(data: &TelemetryData<BITS>) -> Self {
+        let mut s = String::<{ CSV_ROW_BYTES }>::new();
+        let _ = write!(
+            &mut s,
+            "{},{},{},{}",
+            data.timestamp, data.estimated_angle, data.measured_angle, data.speed_rpm
+        );
+        s
     }
 }
 
