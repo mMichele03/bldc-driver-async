@@ -53,7 +53,7 @@ async fn telemetry_task(flash: RpFlash, period_us: u64, mut led: Output<'static>
 }
 
 const TELEMETRY_PERIOD_US: u64 = 10000;
-const LOOP_PERIOD_US: u64 = 10000;
+const LOOP_PERIOD_US: u64 = 1000;
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> ! {

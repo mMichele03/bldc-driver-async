@@ -99,7 +99,7 @@ async fn encoder_task(mut encoder: SpiEncoder, sender: EncoderSender<ENCODER_BIT
 }
 
 impl Encoder<ENCODER_BITS> for SpiEncoder {
-    const ENCODER_FREQUENCY_HZ: u32 = 10000;
+    const ENCODER_FREQUENCY_HZ: u32 = 100_000;
 
     fn read_stream(self, spawner: Spawner) -> EncoderReceiver<ENCODER_BITS> {
         spawner.spawn(encoder_task(self, WATCH.sender()).expect("Failed to allocate encoder task"));
