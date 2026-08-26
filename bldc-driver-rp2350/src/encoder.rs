@@ -19,6 +19,8 @@ pub struct SpiEncoder {
 }
 
 impl SpiEncoder {
+    const ENCODER_PERIOD_US: u64 = 10000; // Duration::from_secs(1).as_micros() / Self::ENCODER_FREQUENCY_HZ as u64;
+
     pub fn new(
         pin_2: Peri<'static, PIN_2>,
         pin_3: Peri<'static, PIN_3>,
@@ -86,11 +88,6 @@ pub static WATCH: EncoderWatch<ENCODER_BITS> = Watch::new();
 
 #[embassy_executor::task]
 async fn encoder_task(mut encoder: SpiEncoder, sender: EncoderSender<ENCODER_BITS>) {
-    // const PERIOD_US: u64 =
-    //     Duration::from_secs(1).as_micros() / (SpiEncoder::ENCODER_FREQUENCY_HZ as u64);
-
-    const PERIOD_US: u64 = 700;
-
     // let mut i = 0;
     loop {
         let start_time = Instant::now();
@@ -104,8 +101,8 @@ async fn encoder_task(mut encoder: SpiEncoder, sender: EncoderSender<ENCODER_BIT
 
         let dt = (Instant::now() - start_time).as_micros();
 
-        if dt < PERIOD_US {
-            Timer::after_micros(PERIOD_US - dt).await;
+        if dt < SpiEncoder::ENCODER_PERIOD_US {
+            Timer::after_micros(SpiEncoder::ENCODER_PERIOD_US - dt).await;
         } else {
             loop {
                 info!("FALSE");
