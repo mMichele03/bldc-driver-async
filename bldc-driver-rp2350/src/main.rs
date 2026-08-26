@@ -10,7 +10,8 @@ use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, DMA_CH2, USB};
 use embassy_rp::usb;
 use embassy_time::Timer;
 use log::info;
-use panic_probe as _;
+// use panic_probe as _;
+use panic_persist as _;
 
 use crate::bldc_motor::RpBldcMotor;
 use crate::encoder::{ENCODER_BITS, EncoderAngle, SpiEncoder, WATCH};
@@ -50,15 +51,30 @@ async fn telemetry_task(flash: RpFlash, period_us: u64, mut led: Output<'static>
 }
 
 const TELEMETRY_PERIOD_US: u64 = 10000;
-const LOOP_PERIOD_US: u64 = 5;
+const LOOP_PERIOD_US: u64 = 10000;
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> ! {
     let p = embassy_rp::init(Default::default());
-    let led = Output::new(p.PIN_25, Level::Low);
 
+    // Take panic message from RAM before anything else
+    let panic_msg = panic_persist::get_panic_message_utf8();
+
+    // Spawn USB logger
     let driver = usb::Driver::new(p.USB, Irqs);
     spawner.spawn(logger_task(driver).expect("Failed to create logger task"));
+
+    // If the previus run crashed, print the panic message in loop
+    if let Some(msg) = panic_msg {
+        loop {
+            log::error!("==== PREVIOUS CRASH RECOVERED ====\n{}", msg);
+
+            // Wait 1 second and print again.
+            // Whenever you open your terminal, you will see it.
+            embassy_time::Timer::after_secs(1).await;
+        }
+    }
+    let led = Output::new(p.PIN_25, Level::Low);
 
     let flash = RpFlash::new(p.FLASH, p.DMA_CH2, Irqs);
     spawner.spawn(

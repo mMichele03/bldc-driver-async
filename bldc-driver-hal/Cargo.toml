@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 
-panic-probe = { workspace = true }
 embassy-usb-logger = { workspace = true }
 embassy-usb = { workspace = true }
 log = { workspace = true }

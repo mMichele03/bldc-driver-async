@@ -5,7 +5,9 @@ edition = "2024"
 
 [dependencies]
 
-panic-probe = { workspace = true }
+# panic-probe = { version = "0.3", features = ["print-defmt"] }
+panic-persist = { version = "0.3.0", features = ["utf8"] }
+
 embassy-usb-logger = { workspace = true }
 embassy-usb = { workspace = true }
 log = { workspace = true }

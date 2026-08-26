@@ -97,7 +97,6 @@ dependencies = [
  "embedded-storage",
  "heapless 0.9.3",
  "log",
- "panic-probe",
  "zerocopy",
 ]
 
@@ -117,7 +116,6 @@ dependencies = [
  "embedded-storage",
  "heapless 0.9.3",
  "log",
- "panic-probe",
  "zerocopy",
 ]
 
@@ -144,7 +142,7 @@ dependencies = [
  "fixed",
  "heapless 0.9.3",
  "log",
- "panic-probe",
+ "panic-persist",
 ]
 
 [[package]]
@@ -983,10 +981,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
-name = "panic-probe"
-version = "0.3.2"
+name = "panic-persist"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4047d9235d1423d66cc97da7d07eddb54d4f154d6c13805c6d0793956f4f25b0"
+checksum = "32bb382689ecd2c4d2d4df9fd56700ba8d43b7b31cca11018cc0e6f8aef39fd5"
 dependencies = [
  "cortex-m",
 ]

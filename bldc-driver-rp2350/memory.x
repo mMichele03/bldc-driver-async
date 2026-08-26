@@ -18,7 +18,10 @@ MEMORY {
      * Example: Separate stacks for core0 and core1.
      */
     SRAM4 : ORIGIN = 0x20080000, LENGTH = 4K
-    SRAM5 : ORIGIN = 0x20081000, LENGTH = 4K
+    
+    /* Repurpose the final 4K bank for our panic dumps */
+    /* SRAM5 : ORIGIN = 0x20081000, LENGTH = 4K */
+    PANDUMP : ORIGIN = 0x20081000, LENGTH = 4K
 }
 
 SECTIONS {
@@ -73,3 +76,6 @@ SECTIONS {
 
 PROVIDE(start_to_end = __end_block_addr - __start_block_addr);
 PROVIDE(end_to_start = __start_block_addr - __end_block_addr);
+
+_panic_dump_start = ORIGIN(PANDUMP);
+_panic_dump_end   = ORIGIN(PANDUMP) + LENGTH(PANDUMP);
