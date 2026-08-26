@@ -4,10 +4,11 @@
 use bldc_driver_core::telemetry::telemetry_run;
 use bldc_driver_hal::{BldcMotor, Encoder};
 use embassy_executor::Spawner;
-use embassy_rp::bind_interrupts;
+use embassy_rp::clocks::ClockConfig;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, DMA_CH2, USB};
 use embassy_rp::usb;
+use embassy_rp::{bind_interrupts, config};
 use embassy_time::Timer;
 use log::info;
 // use panic_probe as _;
@@ -35,6 +36,8 @@ async fn logger_task(driver: usb::Driver<'static, USB>) {
 async fn telemetry_task(flash: RpFlash, period_us: u64, mut led: Output<'static>) {
     led.set_low();
 
+    Timer::after_secs(2).await;
+
     telemetry_run::<
         { ENCODER_BITS },
         { RpFlash::BUFFER_SIZE },
@@ -51,10 +54,13 @@ async fn telemetry_task(flash: RpFlash, period_us: u64, mut led: Output<'static>
 }
 
 const TELEMETRY_PERIOD_US: u64 = 10000;
-const LOOP_PERIOD_US: u64 = 10000;
+const LOOP_PERIOD_US: u64 = 100;
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> ! {
+    // Ensure PLL is enabled and configured for 150 MHz
+    // let config = config::Config::new(ClockConfig::crystal(100_000_000));
+    // let p = embassy_rp::init(config);
     let p = embassy_rp::init(Default::default());
 
     // Take panic message from RAM before anything else
@@ -64,17 +70,25 @@ async fn main(spawner: Spawner) -> ! {
     let driver = usb::Driver::new(p.USB, Irqs);
     spawner.spawn(logger_task(driver).expect("Failed to create logger task"));
 
+    let mut led = Output::new(p.PIN_25, Level::Low);
+
     // If the previus run crashed, print the panic message in loop
     if let Some(msg) = panic_msg {
+        led.set_high();
+
         loop {
             log::error!("==== PREVIOUS CRASH RECOVERED ====\n{}", msg);
 
             // Wait 1 second and print again.
             // Whenever you open your terminal, you will see it.
             embassy_time::Timer::after_secs(1).await;
+            led.set_level(if led.is_set_high() {
+                Level::Low
+            } else {
+                Level::High
+            });
         }
     }
-    let led = Output::new(p.PIN_25, Level::Low);
 
     let flash = RpFlash::new(p.FLASH, p.DMA_CH2, Irqs);
     spawner.spawn(

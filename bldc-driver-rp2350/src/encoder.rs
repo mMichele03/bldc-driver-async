@@ -9,7 +9,7 @@ use embassy_rp::{Peri, dma, interrupt};
 
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::watch::Watch;
-use embassy_time::{Instant, Timer};
+use embassy_time::{Duration, Instant, Timer};
 use log::info;
 
 /// AS5048A Spi Magnetic encoder
@@ -19,7 +19,8 @@ pub struct SpiEncoder {
 }
 
 impl SpiEncoder {
-    const ENCODER_PERIOD_US: u64 = 10000; // Duration::from_secs(1).as_micros() / Self::ENCODER_FREQUENCY_HZ as u64;
+    const ENCODER_PERIOD_US: u64 =
+        Duration::from_secs(1).as_micros() / Self::ENCODER_FREQUENCY_HZ as u64;
 
     pub fn new(
         pin_2: Peri<'static, PIN_2>,
@@ -52,11 +53,13 @@ impl SpiEncoder {
     }
 
     pub async fn read_value(&mut self) -> EncoderData<ENCODER_BITS> {
+        let start = Instant::now();
+
         let buf_tx = [0xffu8; 2];
         let mut buf_rx = [0xffu8; 2];
 
         self.cs.set_low();
-        if let Err(e) = self.spi.transfer(&mut buf_rx, &buf_tx).await {
+        if let Err(e) = self.spi.blocking_transfer(&mut buf_rx, &buf_tx) {
             loop {
                 info!("ERROR: {:?}", e);
                 Timer::after_millis(10).await;
@@ -71,10 +74,14 @@ impl SpiEncoder {
         let angle_raw = ((buf_rx[0] & 0x3f) as u16) << 8 | (buf_rx[1] as u16);
         // let angle: f32 = angle_raw as f32 / 16383.0 * 360.0;
 
+        let end = Instant::now();
+
         EncoderData {
             angle: IntAngle::from_raw(angle_raw as i32),
-            timestamp: Instant::now(),
+            timestamp: end,
             counter: 0,
+            dt1: (end.as_micros() - start.as_micros()) as u32,
+            dt2: 0,
         }
     }
 }
@@ -93,21 +100,22 @@ async fn encoder_task(mut encoder: SpiEncoder, sender: EncoderSender<ENCODER_BIT
         let start_time = Instant::now();
         let data = encoder.read_value().await;
         sender.send(data);
+        let dt = (Instant::now() - start_time).as_micros();
+
         // sender.send(EncoderData {
         //     angle: EncoderAngle::from_raw(0),
         //     timestamp: Instant::now(),
         //     counter: 0,
         // });
 
-        let dt = (Instant::now() - start_time).as_micros();
-
         if dt < SpiEncoder::ENCODER_PERIOD_US {
             Timer::after_micros(SpiEncoder::ENCODER_PERIOD_US - dt).await;
-        } else {
-            loop {
-                info!("FALSE");
-            }
         }
+        // else {
+        //     loop {
+        //         info!("FALSE");
+        //     }
+        // }
 
         // if i == 0 {
         //     info!("DT {}", dt);
@@ -116,7 +124,7 @@ async fn encoder_task(mut encoder: SpiEncoder, sender: EncoderSender<ENCODER_BIT
         // }
         // i %= 1000;
 
-        Timer::after_micros(25).await;
+        // Timer::after_micros(25).await;
     }
 }
 
