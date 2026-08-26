@@ -32,17 +32,22 @@ async fn logger_task(driver: usb::Driver<'static, USB>) {
 }
 
 #[embassy_executor::task]
-async fn telemetry_task(flash: RpFlash, period_us: u64, mut led: Output<'static>) {
+async fn telemetry_task(
+    flash: RpFlash,
+    frequency: u32,
+    duration_us: u64,
+    mut led: Output<'static>,
+) {
     led.set_low();
 
     Timer::after_secs(2).await;
 
-    telemetry_run::<
-        { ENCODER_BITS },
-        { RpFlash::BUFFER_SIZE },
-        { RpFlash::FLASH_SIZE },
-        { RpFlash::PAGE_SIZE },
-    >(period_us, WATCH.receiver().unwrap(), flash)
+    telemetry_run::<{ ENCODER_BITS }, { RpFlash::BUFFER_LEN }>(
+        frequency,
+        duration_us,
+        WATCH.receiver().unwrap(),
+        flash,
+    )
     .await;
 
     // telemetry end
@@ -52,8 +57,9 @@ async fn telemetry_task(flash: RpFlash, period_us: u64, mut led: Output<'static>
     }
 }
 
-const TELEMETRY_PERIOD_US: u64 = 10000;
-const LOOP_PERIOD_US: u64 = 1000;
+const TELEMETRY_FREQUENCY: u32 = 1_000;
+const TELEMETRY_DURATION_US: u64 = 2_000_000;
+const LOOP_PERIOD_US: u64 = 1_000;
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> ! {
@@ -91,7 +97,8 @@ async fn main(spawner: Spawner) -> ! {
 
     let flash = RpFlash::new(p.FLASH, p.DMA_CH2, Irqs);
     spawner.spawn(
-        telemetry_task(flash, TELEMETRY_PERIOD_US, led).expect("Failed to create telemetry task"),
+        telemetry_task(flash, TELEMETRY_FREQUENCY, TELEMETRY_DURATION_US, led)
+            .expect("Failed to create telemetry task"),
     );
 
     let mut angle = EncoderAngle::new(0);

@@ -61,24 +61,22 @@ impl<const BITS: usize> From<&TelemetryData<BITS>> for String<{ CSV_ROW_BYTES }>
 /// ```
 /// #[embassy_executor::task]
 /// async fn telemetry_task() {
-///     telemetry_run<{ENCODER_BITS}, {BUFFER_SIZE}>(/* ... */)
+///     telemetry_run<{ENCODER_BITS}, {BUFFER_LEN}>(/* ... */)
 ///     // handle telemetry end...
 /// }
 /// ```
-pub async fn telemetry_run<
-    const ENCODER_BITS: usize,
-    const BUFFER_SIZE: usize,
-    const FLASH_SIZE: usize,
-    const PAGE_SIZE: usize,
->(
-    period_us: u64,
+pub async fn telemetry_run<const ENCODER_BITS: usize, const BUFFER_LEN: usize>(
+    frequency: u32,
+    duration_us: u64,
     mut rx: bldc_driver_hal::EncoderReceiver<ENCODER_BITS>,
-    mut flash: impl TelemetryFlash<TelemetryData<ENCODER_BITS>, BUFFER_SIZE>,
+    mut flash: impl TelemetryFlash<TelemetryData<ENCODER_BITS>, BUFFER_LEN>,
 ) {
-    let mut buffer: Vec<TelemetryData<ENCODER_BITS>, BUFFER_SIZE> = Vec::new();
-    let mut ticker = Ticker::every(Duration::from_micros(period_us));
+    let mut buffer: Vec<TelemetryData<ENCODER_BITS>, BUFFER_LEN> = Vec::new();
+    let mut ticker = Ticker::every(Duration::from_micros(1_000_000 / (frequency as u64)));
 
-    loop {
+    let buffer_use_len = ((frequency as u64) * duration_us / 1_000_000).min(BUFFER_LEN as u64);
+
+    for _ in 0..buffer_use_len {
         if let Some(reading) = rx.try_get() {
             let data = TelemetryData {
                 estimated_angle: IntAngle::new(0),

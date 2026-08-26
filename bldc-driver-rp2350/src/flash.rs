@@ -18,9 +18,8 @@ pub struct RpFlash {
 
 impl RpFlash {
     const DATA_LEN: usize = core::mem::size_of::<TelemetryData<ENCODER_BITS>>();
-
-    pub const BUFFER_SIZE_BYTES_MAX: usize = 5000;
-    pub const BUFFER_SIZE: usize = Self::BUFFER_SIZE_BYTES_MAX / Self::DATA_LEN;
+    const BUFFER_SIZE_MAX: usize = 150_000;
+    pub const BUFFER_LEN: usize = Self::BUFFER_SIZE_MAX / Self::DATA_LEN;
 
     pub const ADDR_OFFSET: u32 = 0x100000;
     pub const FLASH_SIZE: usize = 2 * 1024 * 1024;
@@ -48,16 +47,18 @@ impl RpFlash {
     }
 }
 
-impl TelemetryFlash<TelemetryData<ENCODER_BITS>, { RpFlash::BUFFER_SIZE }> for RpFlash {
+impl TelemetryFlash<TelemetryData<ENCODER_BITS>, { RpFlash::BUFFER_LEN }> for RpFlash {
     async fn write_data_vec(
         &mut self,
-        data: Vec<TelemetryData<ENCODER_BITS>, { RpFlash::BUFFER_SIZE }>,
+        data: Vec<TelemetryData<ENCODER_BITS>, { RpFlash::BUFFER_LEN }>,
     ) {
         const PAGE_SIZE: usize = RpFlash::PAGE_SIZE;
         const SECTOR_SIZE: usize = RpFlash::SECTOR_SIZE;
 
         let mut page_buffer = [0u8; PAGE_SIZE];
         let mut page_offset = 0;
+
+        // TODO: rewrite cleaning sectors before and then filling with data
 
         for entry in data.into_iter() {
             // let csv_row = entry.into_csv_row();
