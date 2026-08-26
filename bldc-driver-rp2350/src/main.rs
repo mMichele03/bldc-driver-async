@@ -4,12 +4,11 @@
 use bldc_driver_core::telemetry::telemetry_run;
 use bldc_driver_hal::{BldcMotor, Encoder};
 use embassy_executor::Spawner;
-use embassy_rp::clocks::ClockConfig;
+use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, DMA_CH2, USB};
 use embassy_rp::usb;
-use embassy_rp::{bind_interrupts, config};
-use embassy_time::Timer;
+use embassy_time::{Duration, Ticker, Timer};
 use log::info;
 // use panic_probe as _;
 use panic_persist as _;
@@ -119,6 +118,8 @@ async fn main(spawner: Spawner) -> ! {
 
     Timer::after_secs(1).await;
 
+    let mut ticker = Ticker::every(Duration::from_micros(LOOP_PERIOD_US));
+
     loop {
         // while let Some(val) = rec.try_changed() {
         // info!("[{}] value: {}", val.timestamp, val.angle);
@@ -132,6 +133,6 @@ async fn main(spawner: Spawner) -> ! {
         // let data = encoder.read_value().await;
         // info!("value: {}", data.angle);
 
-        Timer::after_micros(LOOP_PERIOD_US).await;
+        ticker.next().await;
     }
 }

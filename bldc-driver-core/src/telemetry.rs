@@ -2,8 +2,7 @@ use bldc_driver_hal::IntAngle;
 use bldc_driver_hal::TelemetryFlash;
 use core::fmt::Write;
 use core::slice;
-use embassy_time::Instant;
-use embassy_time::Timer;
+use embassy_time::{Duration, Instant, Ticker};
 use heapless::String;
 use heapless::Vec;
 use zerocopy::FromBytes;
@@ -77,6 +76,7 @@ pub async fn telemetry_run<
     mut flash: impl TelemetryFlash<TelemetryData<ENCODER_BITS>, BUFFER_SIZE>,
 ) {
     let mut buffer: Vec<TelemetryData<ENCODER_BITS>, BUFFER_SIZE> = Vec::new();
+    let mut ticker = Ticker::every(Duration::from_micros(period_us));
 
     loop {
         if let Some(reading) = rx.try_get() {
@@ -85,7 +85,7 @@ pub async fn telemetry_run<
                 measured_angle: reading.angle,
                 timestamp: Instant::now().as_micros(),
                 speed_rpm: 0,
-                enc_dt1: reading.dt1,
+                enc_dt1: reading.timestamp as u32,
                 enc_dt2: 0,
                 _pad: 0,
             };
@@ -94,7 +94,7 @@ pub async fn telemetry_run<
             }
         }
 
-        Timer::after_micros(period_us).await;
+        ticker.next().await;
     }
 
     flash.write_data_vec(buffer).await;

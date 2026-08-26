@@ -6,14 +6,13 @@ pub use angle::IntAngle;
 use embassy_executor::Spawner;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::watch::{Receiver, Sender, Watch};
-use embassy_time::Instant;
 use heapless::Vec;
 
 /// Data returned by a single encoder reading
 #[derive(Debug, Clone, Copy)]
 pub struct EncoderData<const BITS: usize> {
     pub angle: IntAngle<BITS>,
-    pub timestamp: Instant,
+    pub timestamp: u64,
     pub counter: usize,
     pub dt1: u32,
     pub dt2: u32,
