@@ -2,11 +2,11 @@
 #![no_main]
 
 use bldc_driver_core::telemetry::telemetry_run;
-use bldc_driver_hal::BldcMotor;
+use bldc_driver_hal::{BldcMotor, Encoder};
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Level, Output};
-use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, USB};
+use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, DMA_CH2, USB};
 use embassy_rp::usb;
 use embassy_time::Timer;
 use log::info;
@@ -22,7 +22,7 @@ mod flash;
 
 bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => usb::InterruptHandler<USB>;
-    DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>;
+    DMA_IRQ_0 => embassy_rp::dma::InterruptHandler<DMA_CH0>, embassy_rp::dma::InterruptHandler<DMA_CH1>, embassy_rp::dma::InterruptHandler<DMA_CH2>;
 });
 
 #[embassy_executor::task]
@@ -31,7 +31,9 @@ async fn logger_task(driver: usb::Driver<'static, USB>) {
 }
 
 #[embassy_executor::task]
-async fn telemetry_task(flash: RpFlash, period_us: u64) {
+async fn telemetry_task(flash: RpFlash, period_us: u64, mut led: Output<'static>) {
+    led.set_low();
+
     telemetry_run::<
         { ENCODER_BITS },
         { RpFlash::BUFFER_SIZE },
@@ -40,20 +42,30 @@ async fn telemetry_task(flash: RpFlash, period_us: u64) {
     >(period_us, WATCH.receiver().unwrap(), flash)
     .await;
 
-    // telemetry end: blink led
-    todo!()
+    // telemetry end
+    led.set_high();
+    loop {
+        Timer::after_secs(1).await;
+    }
 }
+
+const TELEMETRY_PERIOD_US: u64 = 10000;
+const LOOP_PERIOD_US: u64 = 5;
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> ! {
     let p = embassy_rp::init(Default::default());
-    let _led = Output::new(p.PIN_25, Level::Low);
+    let led = Output::new(p.PIN_25, Level::Low);
 
     let driver = usb::Driver::new(p.USB, Irqs);
     spawner.spawn(logger_task(driver).expect("Failed to create logger task"));
 
+    let flash = RpFlash::new(p.FLASH, p.DMA_CH2, Irqs);
+    spawner.spawn(
+        telemetry_task(flash, TELEMETRY_PERIOD_US, led).expect("Failed to create telemetry task"),
+    );
+
     let mut angle = EncoderAngle::new(0);
-    const PERIOD_US: u64 = 5;
 
     let delta_angle = EncoderAngle::from_raw(100);
     // EncoderAngle::from_raw(((SPEED_DEG_S * (PERIOD_US as i32) * (1 << 14)) / 360) / 1000000);
@@ -67,11 +79,11 @@ async fn main(spawner: Spawner) -> ! {
         p.PWM_SLICE4,
     );
 
-    let mut encoder = SpiEncoder::new(
+    let encoder = SpiEncoder::new(
         p.PIN_2, p.PIN_3, p.PIN_4, p.PIN_5, p.SPI0, p.DMA_CH0, p.DMA_CH1, Irqs,
     );
 
-    // let mut rec = encoder.read_stream(spawner);
+    // let _rec = encoder.read_stream(spawner);
 
     info!("Hello World! {}", delta_angle);
 
@@ -87,9 +99,9 @@ async fn main(spawner: Spawner) -> ! {
         angle += delta_angle;
         angle.normalize();
 
-        let data = encoder.read_value().await;
-        info!("value: {}", data.angle);
+        // let data = encoder.read_value().await;
+        // info!("value: {}", data.angle);
 
-        Timer::after_micros(PERIOD_US).await;
+        Timer::after_micros(LOOP_PERIOD_US).await;
     }
 }

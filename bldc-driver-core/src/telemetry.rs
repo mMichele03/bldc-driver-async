@@ -6,10 +6,8 @@ use embassy_time::Instant;
 use embassy_time::Timer;
 use heapless::String;
 use heapless::Vec;
-use heapless::string::StringInner;
+use zerocopy::FromBytes;
 use zerocopy::KnownLayout;
-use zerocopy::transmute_ref;
-use zerocopy::{FromBytes, Immutable, IntoBytes};
 
 #[repr(C)]
 #[derive(Clone, Copy, KnownLayout)]
@@ -24,7 +22,9 @@ pub struct TelemetryData<const BITS: usize> {
     estimated_angle: IntAngle<BITS>, // 4 bytes
     measured_angle: IntAngle<BITS>,  // 4 bytes
     speed_rpm: i32,                  // 4 bytes
-    _padding: u32, // 4 bytes, used to make the struct size a multiple of the greatest alignment size (8 bytes)
+    _pad_1: u32,                     // 4 bytes
+    _pad_2: u32,                     // 4 bytes
+    _pad_3: u32,                     // 4 bytes -> Total 32 bytes
 }
 
 const CSV_ROW_BYTES: usize = 64; // number of bytes that can be used to represent a csv row of telemetry data 
@@ -85,15 +85,36 @@ pub async fn telemetry_run<
                 measured_angle: reading.angle,
                 timestamp: Instant::now().as_micros(),
                 speed_rpm: 0,
-                _padding: 0,
+                _pad_1: 0,
+                _pad_2: 0,
+                _pad_3: 0,
             };
             if buffer.push(data).is_err() {
                 break;
             }
+        } else {
+            log::error!("TELEMETRY: no reading data on watch channel");
+
+            // TEST ONLY!
+            if buffer
+                .push(TelemetryData {
+                    timestamp: Instant::now().as_micros(),
+                    estimated_angle: IntAngle::new(1),
+                    measured_angle: IntAngle::new(10),
+                    speed_rpm: 20,
+                    _pad_1: 0,
+                    _pad_2: 0,
+                    _pad_3: 0,
+                })
+                .is_err()
+            {
+                break;
+            }
+            // ..TEST
         }
 
         Timer::after_micros(period_us).await;
     }
 
-    flash.write_data_vec(buffer);
+    flash.write_data_vec(buffer).await;
 }
