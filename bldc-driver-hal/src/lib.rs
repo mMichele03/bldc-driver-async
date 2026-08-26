@@ -19,10 +19,10 @@ pub struct EncoderData<const BITS: usize> {
 
 /// Consumer for the Encoder Data coming from the sensor's data stream
 pub type EncoderReceiver<const BITS: usize> =
-    Receiver<'static, CriticalSectionRawMutex, EncoderData<BITS>, 1>;
+    Receiver<'static, CriticalSectionRawMutex, EncoderData<BITS>, 10>;
 pub type EncoderSender<const BITS: usize> =
-    Sender<'static, CriticalSectionRawMutex, EncoderData<BITS>, 1>;
-pub type EncoderWatch<const BITS: usize> = Watch<CriticalSectionRawMutex, EncoderData<BITS>, 1>;
+    Sender<'static, CriticalSectionRawMutex, EncoderData<BITS>, 10>;
+pub type EncoderWatch<const BITS: usize> = Watch<CriticalSectionRawMutex, EncoderData<BITS>, 10>;
 
 /// Encoder with an arbitrary number of the angle precision BITS
 ///
