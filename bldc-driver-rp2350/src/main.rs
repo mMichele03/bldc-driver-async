@@ -99,7 +99,7 @@ async fn main(spawner: Spawner) -> ! {
         p.PIN_2, p.PIN_3, p.PIN_4, p.PIN_5, p.SPI0, p.DMA_CH0, p.DMA_CH1, Irqs,
     );
 
-    // let _rec = encoder.read_stream(spawner);
+    let _rec = encoder.read_stream(spawner);
 
     info!("Hello World! {}", delta_angle);
 
