@@ -6,7 +6,6 @@ use embassy_rp::peripherals::{PIN_6, PIN_7, PIN_8, PIN_9, PWM_SLICE3, PWM_SLICE4
 use embassy_rp::pwm::{Config, Pwm, SetDutyCycle};
 use fixed::FixedU16;
 use fixed::types::extra::U4;
-use log::info;
 
 pub struct RpBldcMotor {
     pwm_ab: Pwm<'static>,
@@ -59,6 +58,6 @@ impl BldcMotor<ENCODER_BITS> for RpBldcMotor {
             .set_duty_cycle(c.clamp(0, Self::PWM_TOP) as u16)
             .unwrap();
 
-        info!("a b c : {a} {b} {c}");
+        log::debug!("a b c : {a} {b} {c}");
     }
 }
