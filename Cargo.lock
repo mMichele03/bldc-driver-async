@@ -118,6 +118,7 @@ dependencies = [
  "heapless 0.9.3",
  "log",
  "panic-probe",
+ "zerocopy",
 ]
 
 [[package]]

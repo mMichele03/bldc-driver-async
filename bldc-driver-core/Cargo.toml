@@ -21,7 +21,6 @@ embassy-sync = { workspace = true }
 embassy-time = { workspace = true }
 
 heapless = { workspace = true }
+zerocopy = { workspace = true }
 
 bldc-driver-hal = { path = "../bldc-driver-hal" }
-
-zerocopy = "0.8"

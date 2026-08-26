@@ -78,5 +78,5 @@ pub trait BldcMotor<const BITS: usize> {
 /// when the divisor is not a divider of the page size
 pub trait TelemetryFlash<Data, const BUFFER_SIZE: usize> {
     /// Write data vec to flash
-    async fn write_data_vec(&mut self, data: Vec<Data, BUFFER_SIZE>);
+    fn write_data_vec(&mut self, data: Vec<Data, BUFFER_SIZE>) -> impl Future<Output = ()> + Send;
 }

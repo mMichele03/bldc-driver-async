@@ -1,4 +1,5 @@
 use core::fmt::Display;
+use zerocopy::KnownLayout;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NormalizedValue<const MAX_VALUE: i32 = 255> {
@@ -34,10 +35,10 @@ impl<const MAX_VALUE: u32> NormalizedUnsignedValue<MAX_VALUE> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct IntAngle<const BITS: usize> {
-    value: i32,
-}
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, KnownLayout)]
+pub struct IntAngle<const BITS: usize>(i32);
+
 const SIN_MAX: i32 = 255;
 const DOUBLE_SIN_MAX: u32 = 2 * (SIN_MAX as u32);
 
@@ -47,59 +48,44 @@ impl<const BITS: usize> IntAngle<BITS> {
 
     pub const SIN_MAX: i32 = SIN_MAX;
 
-    pub const A180: Self = Self {
-        value: Self::MAX_VALUE / 2,
-    };
-    pub const A90: Self = Self {
-        value: Self::MAX_VALUE / 4,
-    };
-    pub const A120: Self = Self {
-        value: Self::MAX_VALUE / 3,
-    };
-    pub const A240: Self = Self {
-        value: Self::MAX_VALUE * 2 / 3,
-    };
+    pub const A180: Self = Self(Self::MAX_VALUE / 2);
+    pub const A90: Self = Self(Self::MAX_VALUE / 4);
+    pub const A120: Self = Self(Self::MAX_VALUE / 3);
+    pub const A240: Self = Self(Self::MAX_VALUE * 2 / 3);
 
     pub const fn normalized(self) -> Self {
-        if self.value >= 0 {
-            Self {
-                value: self.value & Self::MAX_VALUE_MASK,
-            }
+        Self(if self.0 >= 0 {
+            self.0 & Self::MAX_VALUE_MASK
         } else {
-            let opposite_value = (-self.value) & Self::MAX_VALUE_MASK;
-            Self {
-                value: Self::MAX_VALUE - opposite_value,
-            }
-        }
+            let opposite_value = (-self.0) & Self::MAX_VALUE_MASK;
+            Self::MAX_VALUE - opposite_value
+        })
     }
 
     pub const fn raw_value(&self) -> i32 {
-        self.value
+        self.0
     }
 
     pub const fn to_degrees(&self) -> i32 {
-        (self.value * 360) / Self::MAX_VALUE
+        (self.0 * 360) / Self::MAX_VALUE
     }
 
     pub fn normalize(&mut self) {
         let normalized = (*self).normalized();
-        self.value = normalized.value;
+        self.0 = normalized.0;
     }
 
     pub const fn new(degrees: i32) -> Self {
         let value = degrees as i32 * Self::MAX_VALUE / 360;
-        Self {
-            value: value & Self::MAX_VALUE_MASK,
-        }
-        .normalized()
+        Self(value & Self::MAX_VALUE_MASK).normalized()
     }
 
     pub const fn from_raw(value: i32) -> Self {
-        Self { value }.normalized()
+        Self(value).normalized()
     }
 
     const fn sin_lookup(&self) -> i32 {
-        let normalized_value = self.normalized().value as usize;
+        let normalized_value = self.normalized().0 as usize;
 
         // adjust angle precision to sin table one to get the index
         let mut raw_index = normalized_value >> (BITS - SIN_TABLE_ANGLE_BITS);
@@ -132,10 +118,7 @@ impl<const BITS: usize> IntAngle<BITS> {
     }
 
     pub const fn cos(&self) -> NormalizedValue<SIN_MAX> {
-        Self {
-            value: self.value + Self::A90.value,
-        }
-        .sin()
+        Self(self.0 + Self::A90.0).sin()
     }
 
     pub const fn sin_positive(&self) -> NormalizedUnsignedValue<DOUBLE_SIN_MAX> {
@@ -146,10 +129,7 @@ impl<const BITS: usize> IntAngle<BITS> {
     }
 
     pub const fn cos_positive(&self) -> NormalizedUnsignedValue<DOUBLE_SIN_MAX> {
-        Self {
-            value: self.value + Self::A90.value,
-        }
-        .sin_positive()
+        Self(self.0 + Self::A90.0).sin_positive()
     }
 }
 
@@ -157,15 +137,13 @@ impl<const BITS: usize> core::ops::Add for IntAngle<BITS> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            value: (self.value + rhs.value),
-        }
+        Self(self.0 + rhs.0)
     }
 }
 
 impl<const BITS: usize> core::ops::AddAssign for IntAngle<BITS> {
     fn add_assign(&mut self, rhs: Self) {
-        self.value += rhs.value;
+        self.0 += rhs.0;
     }
 }
 
@@ -173,15 +151,13 @@ impl<const BITS: usize> core::ops::Sub for IntAngle<BITS> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        Self {
-            value: (self.value - rhs.value),
-        }
+        Self(self.0 - rhs.0)
     }
 }
 
 impl<const BITS: usize> core::ops::SubAssign for IntAngle<BITS> {
     fn sub_assign(&mut self, rhs: Self) {
-        self.value -= rhs.value;
+        self.0 -= rhs.0;
     }
 }
 
@@ -189,7 +165,7 @@ impl<const BITS: usize> core::ops::Neg for IntAngle<BITS> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        Self { value: -self.value }
+        Self(-self.0)
     }
 }
 
@@ -197,9 +173,7 @@ impl<const BITS: usize> core::ops::Mul<i32> for IntAngle<BITS> {
     type Output = Self;
 
     fn mul(self, rhs: i32) -> Self::Output {
-        Self {
-            value: (self.value * rhs) / Self::MAX_VALUE,
-        }
+        Self((self.0 * rhs) / Self::MAX_VALUE)
     }
 }
 
@@ -207,19 +181,13 @@ impl<const BITS: usize> core::ops::Div<i32> for IntAngle<BITS> {
     type Output = Self;
 
     fn div(self, rhs: i32) -> Self::Output {
-        Self {
-            value: (self.value * Self::MAX_VALUE) / rhs,
-        }
+        Self((self.0 * Self::MAX_VALUE) / rhs)
     }
 }
 
 impl<const BITS: usize> Display for IntAngle<BITS> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_fmt(format_args!(
-            "<val {}; deg {}>",
-            self.value,
-            self.to_degrees()
-        ))
+        f.write_fmt(format_args!("<val {}; deg {}>", self.0, self.to_degrees()))
     }
 }
 

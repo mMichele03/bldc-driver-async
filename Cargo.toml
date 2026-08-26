@@ -9,6 +9,7 @@ embassy-usb = "0.6"
 log = { version = "0.4" }
 
 heapless = { version = "0.9.3" }
+zerocopy = "0.8"
 
 embedded-hal = "1.0.0"
 embedded-hal-async = "1.0.0"
