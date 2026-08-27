@@ -48,6 +48,7 @@ impl<const BITS: usize> IntAngle<BITS> {
 
     pub const SIN_MAX: i32 = SIN_MAX;
 
+    pub const A360: Self = Self(Self::MAX_VALUE);
     pub const A180: Self = Self(Self::MAX_VALUE / 2);
     pub const A90: Self = Self(Self::MAX_VALUE / 4);
     pub const A120: Self = Self(Self::MAX_VALUE / 3);
@@ -137,7 +138,7 @@ impl<const BITS: usize> core::ops::Add for IntAngle<BITS> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Self(self.0 + rhs.0)
+        Self(self.0 + rhs.0).normalized()
     }
 }
 
@@ -151,7 +152,7 @@ impl<const BITS: usize> core::ops::Sub for IntAngle<BITS> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        Self(self.0 - rhs.0)
+        Self(self.0 - rhs.0).normalized()
     }
 }
 
@@ -188,6 +189,12 @@ impl<const BITS: usize> core::ops::Div<i32> for IntAngle<BITS> {
 impl<const BITS: usize> Display for IntAngle<BITS> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_fmt(format_args!("<val {}; deg {}>", self.0, self.to_degrees()))
+    }
+}
+
+impl<const BITS: usize> Into<i32> for IntAngle<BITS> {
+    fn into(self) -> i32 {
+        self.raw_value()
     }
 }
 
