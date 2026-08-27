@@ -14,7 +14,7 @@
 
 4. ## Basic helpers
     - setup log
-    - setup telemetry(?)
+    - setup telemetry
 
 5. ## Define API
     - create "hardware libraries" to control the motor and to read the sensor
