@@ -59,6 +59,7 @@ impl TelemetryFlash<TelemetryData<ENCODER_BITS>, { RpFlash::BUFFER_LEN }> for Rp
         let mut page_offset = 0;
 
         // TODO: rewrite cleaning sectors before and then filling with data
+        // TODO: add write len to flash
 
         for entry in data.into_iter() {
             // let csv_row = entry.into_csv_row();

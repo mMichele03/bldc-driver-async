@@ -13,6 +13,8 @@ use heapless::Vec;
 pub struct EncoderData<const BITS: usize> {
     pub angle: IntAngle<BITS>,
     pub timestamp: u64,
+
+    // TODO: remove this fields as unused
     pub counter: usize,
     pub dt1: u32,
     pub dt2: u32,
