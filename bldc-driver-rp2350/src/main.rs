@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 
+use bldc_driver_core::generate_bldc_driver_tasks;
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Level, Output};
@@ -11,14 +12,20 @@ use embassy_time::Timer;
 use panic_persist as _;
 
 use crate::bldc_motor::RpBldcMotor;
-use crate::core_test::{run_bldc_driver_loop, run_telemetry};
 use crate::encoder::{ENCODER_BITS, SpiEncoder};
 use crate::flash::RpFlash;
 
 mod bldc_motor;
-mod core_test;
 mod encoder;
 mod flash;
+
+generate_bldc_driver_tasks!(
+    crate::encoder::SpiEncoder,
+    crate::bldc_motor::RpBldcMotor,
+    crate::flash::RpFlash,
+    crate::encoder::ENCODER_BITS,
+    crate::flash::RpFlash::BUFFER_LEN,
+);
 
 bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => usb::InterruptHandler<USB>;
