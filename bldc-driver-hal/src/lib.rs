@@ -6,6 +6,7 @@ pub use angle::IntAngle;
 use embassy_executor::Spawner;
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::watch::{Receiver, Sender, Watch};
+use embassy_time::Duration;
 use heapless::Vec;
 
 /// Data returned by a single encoder reading
@@ -45,7 +46,15 @@ pub trait Encoder<const BITS: usize> {
     /// The frequency at which the encoder samples data
     const ENCODER_FREQUENCY_HZ: u32;
 
-    /// Starts a stream of readings, returns immediately the read frequency and the watch receiver
+    /// The time period at which the encoder samples data
+    const ENCODER_PERIOD_US: u64 =
+        Duration::from_secs(1).as_micros() / Self::ENCODER_FREQUENCY_HZ as u64;
+
+    /// Reads a single value from the encoder, used only in the default impl of read_stream
+    /// If you need to reimplement read_stream yourself, don't mind this function
+    fn read_value_blocking(&mut self) -> EncoderData<BITS>;
+
+    /// Starts a stream of readings, returns immediately the watch receiver
     fn read_stream(self, spawner: Spawner) -> EncoderReceiver<BITS>;
 }
 

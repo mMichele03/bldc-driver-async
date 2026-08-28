@@ -1,3 +1,4 @@
+use bldc_driver_core::encoder::encoder_run;
 use bldc_driver_hal::{
     Encoder, EncoderData, EncoderReceiver, EncoderSender, EncoderWatch, IntAngle,
 };
@@ -9,7 +10,7 @@ use embassy_rp::{Peri, dma, interrupt};
 
 use embassy_rp::spi::{Async, Config, Spi};
 use embassy_sync::watch::Watch;
-use embassy_time::{Duration, Instant, Ticker};
+use embassy_time::Instant;
 
 /// AS5048A Spi Magnetic encoder
 pub struct SpiEncoder {
@@ -18,9 +19,6 @@ pub struct SpiEncoder {
 }
 
 impl SpiEncoder {
-    const ENCODER_PERIOD_US: u64 =
-        Duration::from_secs(1).as_micros() / Self::ENCODER_FREQUENCY_HZ as u64;
-
     pub fn new(
         pin_2: Peri<'static, PIN_2>,
         pin_3: Peri<'static, PIN_3>,
@@ -50,8 +48,24 @@ impl SpiEncoder {
 
         Self { cs, spi }
     }
+}
 
-    pub async fn read_value(&mut self) -> EncoderData<ENCODER_BITS> {
+// encoder precision fixed to 14 bits
+pub const ENCODER_BITS: usize = 14;
+
+pub type EncoderAngle = IntAngle<ENCODER_BITS>;
+
+pub static WATCH: EncoderWatch<ENCODER_BITS> = Watch::new();
+
+#[embassy_executor::task]
+async fn encoder_task(encoder: SpiEncoder, sender: EncoderSender<ENCODER_BITS>) {
+    encoder_run(encoder, sender).await;
+}
+
+impl Encoder<ENCODER_BITS> for SpiEncoder {
+    const ENCODER_FREQUENCY_HZ: u32 = 100_000;
+
+    fn read_value_blocking(&mut self) -> EncoderData<ENCODER_BITS> {
         // let start = Instant::now();
 
         let buf_tx = [0xffu8; 2];
@@ -77,33 +91,12 @@ impl SpiEncoder {
             dt2: 0,
         }
     }
-}
-
-// encoder precision fixed to 14 bits
-pub const ENCODER_BITS: usize = 14;
-
-pub type EncoderAngle = IntAngle<ENCODER_BITS>;
-
-pub static WATCH: EncoderWatch<ENCODER_BITS> = Watch::new();
-
-#[embassy_executor::task]
-async fn encoder_task(mut encoder: SpiEncoder, sender: EncoderSender<ENCODER_BITS>) {
-    let mut ticker = Ticker::every(Duration::from_micros(SpiEncoder::ENCODER_PERIOD_US));
-
-    loop {
-        let data = encoder.read_value().await;
-        sender.send(data);
-
-        ticker.next().await;
-    }
-}
-
-impl Encoder<ENCODER_BITS> for SpiEncoder {
-    const ENCODER_FREQUENCY_HZ: u32 = 100_000;
 
     fn read_stream(self, spawner: Spawner) -> EncoderReceiver<ENCODER_BITS> {
         spawner.spawn(encoder_task(self, WATCH.sender()).expect("Failed to allocate encoder task"));
 
-        WATCH.receiver().unwrap()
+        WATCH
+            .receiver()
+            .expect("Encoder watch run out of receivers")
     }
 }
