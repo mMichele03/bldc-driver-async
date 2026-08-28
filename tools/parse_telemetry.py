@@ -20,14 +20,14 @@ rows = []
 for i in range(0, len(data) - RECORD_SIZE + 1, RECORD_SIZE):
     chunk = data[i:i+RECORD_SIZE]
     try:
-        ts, est, meas, speed, t1, t2, pad = struct.unpack('<QiiiIII', chunk)
+        ts, tenc, test, angle, aest, vest, pad = struct.unpack('<QIIiiiI', chunk)
     except struct.error:
         continue
-    rows.append((ts, angle_to_deg(est), angle_to_deg(meas), speed, t1, t2))
+    rows.append((ts, tenc, test, angle_to_deg(angle), angle_to_deg(aest), vest))
 
 with open(OUTFILE, 'w') as out:
-    out.write('ts,est_raw,meas_raw,speed,t1,t2\n')
-    for ts, est, meas, speed, t1, t2 in rows:
-        out.write(f'{ts},{est},{meas},{speed},{t1},{t2}\n')
+    out.write('ts,enc_ts,est_ts,angle,angle_est,velocity_est\n')
+    for ts, tenc, test, angle, aest, vest in rows:
+        out.write(f'{ts},{tenc},{test},{angle},{aest},{vest}\n')
 
 print(f'Wrote {len(rows)} rows to {OUTFILE}')

@@ -77,8 +77,12 @@ macro_rules! generate_bldc_driver_tasks {
             $crate::telemetry::telemetry_run::<{ $bits }, { $buffer_len }>(
                 frequency,
                 duration_us,
-                ENCODER_WATCH.receiver().unwrap(),
-                KINEMATIC_EST_WATCH.receiver().unwrap(),
+                ENCODER_WATCH
+                    .receiver()
+                    .expect("Encoder watch run out of receivers"),
+                KINEMATIC_EST_WATCH
+                    .receiver()
+                    .expect("Kinematic estimation watch run out of receivers"),
                 flash,
             )
             .await;
