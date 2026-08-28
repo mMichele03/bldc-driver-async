@@ -72,9 +72,6 @@ impl Encoder<ENCODER_BITS> for SpiEncoder {
         EncoderData {
             angle: IntAngle::from_raw(angle_raw as i32),
             timestamp: Instant::now().as_micros(),
-            counter: 0,
-            dt1: 0,
-            dt2: 0,
         }
     }
 }
