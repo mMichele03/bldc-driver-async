@@ -1,23 +1,22 @@
 #![no_std]
 #![no_main]
 
-use bldc_driver_core::telemetry::telemetry_run;
-use bldc_driver_hal::{BldcMotor, Encoder};
 use embassy_executor::Spawner;
 use embassy_rp::bind_interrupts;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, DMA_CH2, USB};
 use embassy_rp::usb;
-use embassy_time::{Duration, Ticker, Timer};
-use log::info;
+use embassy_time::Timer;
 // use panic_probe as _;
 use panic_persist as _;
 
 use crate::bldc_motor::RpBldcMotor;
-use crate::encoder::{ENCODER_BITS, EncoderAngle, SpiEncoder, WATCH};
+use crate::core_test::{run_bldc_driver_loop, run_telemetry};
+use crate::encoder::{ENCODER_BITS, SpiEncoder};
 use crate::flash::RpFlash;
 
 mod bldc_motor;
+mod core_test;
 mod encoder;
 mod flash;
 
@@ -31,35 +30,8 @@ async fn logger_task(driver: usb::Driver<'static, USB>) {
     embassy_usb_logger::run!(1024, log::LevelFilter::Info, driver);
 }
 
-#[embassy_executor::task]
-async fn telemetry_task(
-    flash: RpFlash,
-    frequency: u32,
-    duration_us: u64,
-    mut led: Output<'static>,
-) {
-    led.set_low();
-
-    Timer::after_secs(2).await;
-
-    telemetry_run::<{ ENCODER_BITS }, { RpFlash::BUFFER_LEN }>(
-        frequency,
-        duration_us,
-        WATCH.receiver().unwrap(),
-        flash,
-    )
-    .await;
-
-    // telemetry end
-    led.set_high();
-    loop {
-        Timer::after_secs(1).await;
-    }
-}
-
 const TELEMETRY_FREQUENCY: u32 = 1_000;
 const TELEMETRY_DURATION_US: u64 = 2_000_000;
-const LOOP_PERIOD_US: u64 = 1_000;
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> ! {
@@ -76,6 +48,7 @@ async fn main(spawner: Spawner) -> ! {
     spawner.spawn(logger_task(driver).expect("Failed to create logger task"));
 
     let mut led = Output::new(p.PIN_25, Level::Low);
+    led.set_low();
 
     // If the previus run crashed, print the panic message in loop
     if let Some(msg) = panic_msg {
@@ -95,18 +68,11 @@ async fn main(spawner: Spawner) -> ! {
         }
     }
 
+    log::info!("No panic");
+
     let flash = RpFlash::new(p.FLASH, p.DMA_CH2, Irqs);
-    spawner.spawn(
-        telemetry_task(flash, TELEMETRY_FREQUENCY, TELEMETRY_DURATION_US, led)
-            .expect("Failed to create telemetry task"),
-    );
 
-    let mut angle = EncoderAngle::new(0);
-
-    let delta_angle = EncoderAngle::from_raw(100);
-    // EncoderAngle::from_raw(((SPEED_DEG_S * (PERIOD_US as i32) * (1 << 14)) / 360) / 1000000);
-
-    let mut motor = RpBldcMotor::new(
+    let motor = RpBldcMotor::new(
         p.PIN_6,
         p.PIN_7,
         p.PIN_8,
@@ -119,27 +85,21 @@ async fn main(spawner: Spawner) -> ! {
         p.PIN_2, p.PIN_3, p.PIN_4, p.PIN_5, p.SPI0, p.DMA_CH0, p.DMA_CH1, Irqs,
     );
 
-    let _rec = encoder.read_stream(spawner);
-
-    info!("Hello World! {}", delta_angle);
-
     Timer::after_secs(1).await;
 
-    let mut ticker = Ticker::every(Duration::from_micros(LOOP_PERIOD_US));
+    log::info!("Setup done");
+
+    run_bldc_driver_loop(spawner, motor, encoder);
+    let telemetry_end = run_telemetry(spawner, flash, TELEMETRY_FREQUENCY, TELEMETRY_DURATION_US);
+
+    log::info!("Everything run");
+
+    telemetry_end.wait().await;
+    led.set_high();
 
     loop {
-        // while let Some(val) = rec.try_changed() {
-        // info!("[{}] value: {}", val.timestamp, val.angle);
-        // }
+        log::info!("Loop");
 
-        motor.set_magnetic_field(angle, RpBldcMotor::PWM_TOP / 2);
-
-        angle += delta_angle;
-        angle.normalize();
-
-        // let data = encoder.read_value().await;
-        // info!("value: {}", data.angle);
-
-        ticker.next().await;
+        Timer::after_secs(1).await;
     }
 }

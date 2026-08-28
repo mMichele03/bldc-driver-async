@@ -1,15 +1,10 @@
-use bldc_driver_core::encoder::encoder_run;
-use bldc_driver_hal::{
-    Encoder, EncoderData, EncoderReceiver, EncoderSender, EncoderWatch, IntAngle,
-};
+use bldc_driver_hal::{Encoder, EncoderData, IntAngle};
 
-use embassy_executor::Spawner;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{DMA_CH0, DMA_CH1, PIN_2, PIN_3, PIN_4, PIN_5, SPI0};
 use embassy_rp::{Peri, dma, interrupt};
 
 use embassy_rp::spi::{Async, Config, Spi};
-use embassy_sync::watch::Watch;
 use embassy_time::Instant;
 
 /// AS5048A Spi Magnetic encoder
@@ -53,15 +48,6 @@ impl SpiEncoder {
 // encoder precision fixed to 14 bits
 pub const ENCODER_BITS: usize = 14;
 
-pub type EncoderAngle = IntAngle<ENCODER_BITS>;
-
-pub static WATCH: EncoderWatch<ENCODER_BITS> = Watch::new();
-
-#[embassy_executor::task]
-async fn encoder_task(encoder: SpiEncoder, sender: EncoderSender<ENCODER_BITS>) {
-    encoder_run(encoder, sender).await;
-}
-
 impl Encoder<ENCODER_BITS> for SpiEncoder {
     const ENCODER_FREQUENCY_HZ: u32 = 100_000;
 
@@ -90,13 +76,5 @@ impl Encoder<ENCODER_BITS> for SpiEncoder {
             dt1: 0,
             dt2: 0,
         }
-    }
-
-    fn read_stream(self, spawner: Spawner) -> EncoderReceiver<ENCODER_BITS> {
-        spawner.spawn(encoder_task(self, WATCH.sender()).expect("Failed to allocate encoder task"));
-
-        WATCH
-            .receiver()
-            .expect("Encoder watch run out of receivers")
     }
 }
