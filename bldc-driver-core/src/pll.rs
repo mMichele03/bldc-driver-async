@@ -1,7 +1,9 @@
 use bldc_driver_hal::IntAngle;
 
+use crate::{EncoderReceiver, KinematicEstSender};
+
 /// PLL observer (used to reduce voltage phase lag)
-pub struct PllObserver<const BITS: usize, const MAX_SPEED_RPM: i32> {
+struct PllObserver<const BITS: usize, const MAX_SPEED_RPM: i32> {
     /// Estimated angle
     angle_est: IntAngle<BITS>,
     /// Estimated angular velocity (in IntAngle/s)
@@ -72,11 +74,49 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
         (self.angle_est, self.velocity_est)
     }
 
-    pub fn angle_est(&self) -> IntAngle<BITS> {
+    pub fn _angle_est(&self) -> IntAngle<BITS> {
         self.angle_est
     }
 
-    pub fn velocity_est(&self) -> i32 {
+    pub fn _velocity_est(&self) -> i32 {
         self.velocity_est
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct KinematicEst<const BITS: usize> {
+    pub angle: IntAngle<BITS>,
+    pub velocity: i32,
+    pub timestamp: u64,
+}
+
+/// Pll observer task loop, intended to be run in an embassy task
+///
+/// # Usage example
+///
+/// ```
+/// #[embassy_executor::task]
+/// async fn pll_observer_task() {
+///     pll_observer_run<{BITS}>(/* ... */)
+/// }
+/// ```
+pub async fn pll_observer_run<const BITS: usize, const MAX_SPEED_RPM: i32>(
+    mut receiver: EncoderReceiver<BITS>,
+    sender: KinematicEstSender<BITS>,
+    period_us: i32,
+    bandwidth_hz: i32,
+) -> ! {
+    let mut pll = PllObserver::<BITS, MAX_SPEED_RPM>::new(period_us, bandwidth_hz);
+
+    loop {
+        let encoder_data = receiver.changed().await;
+
+        let (angle, velocity) = pll.update(encoder_data.angle);
+
+        sender.send(KinematicEst {
+            angle,
+            velocity,
+            timestamp: encoder_data.timestamp,
+        });
     }
 }

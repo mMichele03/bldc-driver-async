@@ -198,6 +198,12 @@ impl<const BITS: usize> Into<i32> for IntAngle<BITS> {
     }
 }
 
+impl<const BITS: usize> Default for IntAngle<BITS> {
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
 const SIN_TABLE_ANGLE_BITS: usize = 12;
 const SIN_TABLE_LENGTH: usize = 1 << (SIN_TABLE_ANGLE_BITS - 2); // 1024 entries
 const SIN_TABLE_LAST_INDEX: usize = SIN_TABLE_LENGTH - 1;

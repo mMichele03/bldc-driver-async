@@ -1,5 +1,7 @@
-use bldc_driver_hal::{Encoder, EncoderSender};
+use bldc_driver_hal::Encoder;
 use embassy_time::{Duration, Ticker};
+
+use crate::EncoderSender;
 
 /// Encoder task loop, intended to be run in an embassy task
 /// This is the default implementation for an encoder that supports continuous polling

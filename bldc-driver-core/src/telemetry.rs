@@ -6,17 +6,20 @@ use heapless::Vec;
 use zerocopy::FromBytes;
 use zerocopy::KnownLayout;
 
+use crate::EncoderReceiver;
+use crate::KinematicEstReceiver;
+
 /// Used u64 and not Instant for the timestamp because u64 implements the zerocopy traits.
 /// Total struct size: 24 bytes
 #[repr(C)]
 #[derive(Clone, Copy, FromBytes, KnownLayout)]
 pub struct TelemetryData<const BITS: usize> {
     timestamp: u64,                  // 8 bytes
-    estimated_angle: IntAngle<BITS>, // 4 bytes
+    encoder_timestamp: u32,          // 4 bytes
+    estimation_timestamp: u32,       // 4 bytes
     measured_angle: IntAngle<BITS>,  // 4 bytes
-    speed_rpm: i32,                  // 4 bytes
-    enc_dt1: u32,                    // 4 bytes
-    enc_dt2: u32,                    // 4 bytes
+    estimated_angle: IntAngle<BITS>, // 4 bytes
+    estimated_velocity: i32,         // 4 bytes
     _pad: u32,                       // 4 bytes -> Total 32 bytes
 }
 
@@ -28,6 +31,29 @@ impl<const BITS: usize> TelemetryData<BITS> {
     }
 }
 
+impl<const BITS: usize> TelemetryData<BITS> {
+    fn new() -> Self {
+        Self {
+            timestamp: Instant::now().as_micros(),
+            ..Default::default()
+        }
+    }
+}
+
+impl<const BITS: usize> Default for TelemetryData<BITS> {
+    fn default() -> Self {
+        Self {
+            timestamp: Default::default(),
+            encoder_timestamp: Default::default(),
+            estimation_timestamp: Default::default(),
+            measured_angle: Default::default(),
+            estimated_angle: Default::default(),
+            estimated_velocity: Default::default(),
+            _pad: Default::default(),
+        }
+    }
+}
+
 /// Telemetry task loop, intended to be run in an embassy task
 ///
 /// # Usage example
@@ -35,35 +61,38 @@ impl<const BITS: usize> TelemetryData<BITS> {
 /// ```
 /// #[embassy_executor::task]
 /// async fn telemetry_task() {
-///     telemetry_run<{ENCODER_BITS}, {BUFFER_LEN}>(/* ... */)
+///     telemetry_run<{BITS}, {BUFFER_LEN}>(/* ... */)
 ///     // handle telemetry end...
 /// }
 /// ```
-pub async fn telemetry_run<const ENCODER_BITS: usize, const BUFFER_LEN: usize>(
+pub async fn telemetry_run<const BITS: usize, const BUFFER_LEN: usize>(
     frequency: u32,
     duration_us: u64,
-    mut rx: bldc_driver_hal::EncoderReceiver<ENCODER_BITS>,
-    mut flash: impl TelemetryFlash<TelemetryData<ENCODER_BITS>, BUFFER_LEN>,
+    mut encoder_rx: EncoderReceiver<BITS>,
+    mut kin_est_rx: KinematicEstReceiver<BITS>,
+    mut flash: impl TelemetryFlash<TelemetryData<BITS>, BUFFER_LEN>,
 ) {
-    let mut buffer: Vec<TelemetryData<ENCODER_BITS>, BUFFER_LEN> = Vec::new();
+    let mut buffer: Vec<TelemetryData<BITS>, BUFFER_LEN> = Vec::new();
     let mut ticker = Ticker::every(Duration::from_micros(1_000_000 / (frequency as u64)));
 
     let buffer_use_len = ((frequency as u64) * duration_us / 1_000_000).min(BUFFER_LEN as u64);
 
     for _ in 0..buffer_use_len {
-        if let Some(reading) = rx.try_get() {
-            let data = TelemetryData {
-                estimated_angle: IntAngle::new(0),
-                measured_angle: reading.angle,
-                timestamp: Instant::now().as_micros(),
-                speed_rpm: 0,
-                enc_dt1: reading.timestamp as u32,
-                enc_dt2: 0,
-                _pad: 0,
-            };
-            if buffer.push(data).is_err() {
-                break;
-            }
+        let mut data = TelemetryData::new();
+
+        if let Some(encoder_data) = encoder_rx.try_get() {
+            data.measured_angle = encoder_data.angle;
+            data.encoder_timestamp = encoder_data.timestamp as u32;
+        }
+
+        if let Some(kin_est_data) = kin_est_rx.try_get() {
+            data.estimated_angle = kin_est_data.angle;
+            data.estimated_velocity = kin_est_data.velocity;
+            data.estimation_timestamp = kin_est_data.timestamp as u32;
+        }
+
+        if buffer.push(data).is_err() {
+            break;
         }
 
         ticker.next().await;

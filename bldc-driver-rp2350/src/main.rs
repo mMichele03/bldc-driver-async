@@ -25,6 +25,7 @@ generate_bldc_driver_tasks!(
     crate::flash::RpFlash,
     crate::encoder::ENCODER_BITS,
     crate::flash::RpFlash::BUFFER_LEN,
+    2200,
 );
 
 bind_interrupts!(struct Irqs {
@@ -94,7 +95,7 @@ async fn main(spawner: Spawner) -> ! {
 
     log::info!("Setup done");
 
-    run_bldc_driver_loop(spawner, motor, encoder);
+    run_bldc_driver_loop(spawner, motor, encoder, 200);
 
     led.set_low();
     let telemetry_end = run_telemetry(spawner, flash, TELEMETRY_FREQUENCY, TELEMETRY_DURATION_US);

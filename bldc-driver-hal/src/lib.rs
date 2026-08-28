@@ -3,8 +3,6 @@
 mod angle;
 
 pub use angle::IntAngle;
-use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
-use embassy_sync::watch::{Receiver, Sender, Watch};
 use embassy_time::Duration;
 use heapless::Vec;
 
@@ -14,14 +12,6 @@ pub struct EncoderData<const BITS: usize> {
     pub angle: IntAngle<BITS>,
     pub timestamp: u64,
 }
-
-// TODO: move in core?
-/// Consumer for the Encoder Data coming from the sensor's data stream
-pub type EncoderReceiver<const BITS: usize> =
-    Receiver<'static, CriticalSectionRawMutex, EncoderData<BITS>, 10>;
-pub type EncoderSender<const BITS: usize> =
-    Sender<'static, CriticalSectionRawMutex, EncoderData<BITS>, 10>;
-pub type EncoderWatch<const BITS: usize> = Watch<CriticalSectionRawMutex, EncoderData<BITS>, 10>;
 
 /// Encoder with an arbitrary number of the angle precision BITS
 ///
