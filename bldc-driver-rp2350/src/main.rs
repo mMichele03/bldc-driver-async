@@ -48,7 +48,7 @@ async fn main(spawner: Spawner) -> ! {
     spawner.spawn(logger_task(driver).expect("Failed to create logger task"));
 
     let mut led = Output::new(p.PIN_25, Level::Low);
-    led.set_low();
+    led.set_high();
 
     // If the previus run crashed, print the panic message in loop
     if let Some(msg) = panic_msg {
@@ -67,8 +67,6 @@ async fn main(spawner: Spawner) -> ! {
             });
         }
     }
-
-    log::info!("No panic");
 
     let flash = RpFlash::new(p.FLASH, p.DMA_CH2, Irqs);
 
@@ -90,6 +88,8 @@ async fn main(spawner: Spawner) -> ! {
     log::info!("Setup done");
 
     run_bldc_driver_loop(spawner, motor, encoder);
+
+    led.set_low();
     let telemetry_end = run_telemetry(spawner, flash, TELEMETRY_FREQUENCY, TELEMETRY_DURATION_US);
 
     log::info!("Everything run");
@@ -98,7 +98,7 @@ async fn main(spawner: Spawner) -> ! {
     led.set_high();
 
     loop {
-        log::info!("Loop");
+        log::info!("Telemetry end");
 
         Timer::after_secs(1).await;
     }

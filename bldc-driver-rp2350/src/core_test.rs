@@ -6,7 +6,7 @@ use bldc_driver_core::telemetry::telemetry_run;
 use bldc_driver_hal::{BldcMotor, Encoder, EncoderReceiver, EncoderSender, EncoderWatch};
 use embassy_executor::Spawner;
 use embassy_sync::{blocking_mutex::raw::CriticalSectionRawMutex, signal::Signal, watch::Watch};
-use embassy_time::{Duration, Ticker, Timer};
+use embassy_time::{Duration, Ticker};
 
 const BITS: usize = ENCODER_BITS;
 type EncoderImpl = SpiEncoder;
@@ -38,14 +38,12 @@ async fn encoder_task(mut encoder: EncoderImpl, sender: EncoderSender<BITS>) {
 #[embassy_executor::task]
 async fn pll_observer_task(mut rec: EncoderReceiver<BITS>) {
     loop {
-        let _val = rec.get().await;
+        let _val = rec.changed().await;
     }
 }
 
 #[embassy_executor::task]
 pub async fn telemetry_task(flash: FlashImpl, frequency: u32, duration_us: u64) {
-    Timer::after_secs(2).await;
-
     telemetry_run::<{ ENCODER_BITS }, { RpFlash::BUFFER_LEN }>(
         frequency,
         duration_us,
@@ -73,9 +71,9 @@ pub fn run_telemetry(
 pub fn run_bldc_driver_loop(spawner: Spawner, _motor: impl BldcMotor<BITS>, encoder: EncoderImpl) {
     spawner.spawn(encoder_task(encoder, WATCH.sender()).expect("Failed to allocate encoder task"));
 
-    // let rec = WATCH
-    //     .receiver()
-    //     .expect("Encoder watch run out of receivers");
+    let rec = WATCH
+        .receiver()
+        .expect("Encoder watch run out of receivers");
 
-    // spawner.spawn(pll_observer_task(rec).expect("Failed to allocate pll observer task"));
+    spawner.spawn(pll_observer_task(rec).expect("Failed to allocate pll observer task"));
 }
