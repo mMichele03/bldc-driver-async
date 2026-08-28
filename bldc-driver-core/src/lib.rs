@@ -1,5 +1,6 @@
 #![no_std]
 
+pub mod encoder;
 pub mod pll;
 pub mod telemetry;
 
@@ -28,21 +29,10 @@ macro_rules! generate_bldc_driver_tasks {
 
         #[embassy_executor::task]
         async fn encoder_task(
-            mut encoder: $encoder,
+            encoder: $encoder,
             sender: bldc_driver_hal::EncoderSender<{ $bits }>,
         ) {
-            use bldc_driver_hal::Encoder;
-
-            let mut ticker = embassy_time::Ticker::every(embassy_time::Duration::from_micros(
-                <$encoder as Encoder<{ $bits }>>::ENCODER_PERIOD_US,
-            ));
-
-            loop {
-                let data = encoder.read_value_blocking();
-                sender.send(data);
-
-                ticker.next().await;
-            }
+            $crate::encoder::encoder_run::<{ $bits }, $encoder>(encoder, sender).await;
         }
 
         #[embassy_executor::task]
