@@ -18,7 +18,11 @@ embedded-io = { workspace = true }
 embedded-io-async = { workspace = true }
 embedded-storage = { workspace = true }
 
-embassy-executor = { workspace = true }
+embassy-executor = { workspace = true, features = [
+  "platform-cortex-m",
+  "executor-thread",
+  "executor-interrupt",
+] }
 embassy-sync = { workspace = true }
 embassy-time = { workspace = true }
 

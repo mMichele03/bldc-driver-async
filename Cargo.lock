@@ -1442,6 +1442,9 @@ dependencies = [
 [[package]]
 name = "test-core"
 version = "0.1.0"
+dependencies = [
+ "bldc-driver-core",
+]
 
 [[package]]
 name = "thread_local"
