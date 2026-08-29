@@ -3,7 +3,7 @@ use bldc_driver_hal::IntAngle;
 use crate::{EncoderReceiver, KinematicEstSender};
 
 /// PLL observer (used to reduce voltage phase lag)
-struct PllObserver<const BITS: usize, const MAX_SPEED_RPM: i32> {
+pub struct PllObserver<const BITS: usize, const MAX_SPEED_RPM: i32> {
     /// Estimated angle
     angle_est: IntAngle<BITS>,
     /// Estimated angular velocity (in IntAngle/s)

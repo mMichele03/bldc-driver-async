@@ -1444,6 +1444,7 @@ name = "test-core"
 version = "0.1.0"
 dependencies = [
  "bldc-driver-core",
+ "bldc-driver-hal",
 ]
 
 [[package]]
