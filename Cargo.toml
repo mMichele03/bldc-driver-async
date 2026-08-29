@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["bldc-driver-core", "bldc-driver-hal", "bldc-driver-rp2350"]
+members = ["bldc-driver-core", "bldc-driver-hal", "bldc-driver-rp2350", "test-core"]
 
 [workspace.dependencies]
 embassy-usb-logger = "0.6"
