@@ -3,5 +3,8 @@
     "rust-analyzer.check.extraArgs": [
         "--target",
         "thumbv8m.main-none-eabihf"
+    ],
+    "rust-analyzer.files.excludeDirs": [
+        "test-core"
     ]
 }
