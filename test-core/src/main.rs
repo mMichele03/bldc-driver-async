@@ -8,7 +8,7 @@ mod angle_iter;
 mod csv;
 
 const BITS: usize = 14;
-const ENCODER_FREQUENCY_HZ: u32 = 100_000;
+const ENCODER_FREQUENCY_HZ: u32 = 100;
 const ENCODER_PERIOD_US: u64 =
     (Duration::from_secs(1).as_micros() as u64) / (ENCODER_FREQUENCY_HZ as u64);
 type Angle = IntAngle<BITS>;
@@ -21,25 +21,28 @@ struct TestKinEstData {
 }
 
 fn main() {
+    env_logger::init();
+    log::info!("Logger started.");
+
     const TEST_SPEED: i32 = Angle::A360.raw_value() / 1;
 
     let iter = ConstantSpeedAngleIter::from_int_angle_per_second(
         Angle::new(0),
         TEST_SPEED,
         ENCODER_PERIOD_US,
-        2_000,
+        1_000_000,
     );
 
-    // let mut pll = PllObserver::<BITS, 2200>::new(ENCODER_PERIOD_US as i32, 200);
+    let mut pll = PllObserver::<BITS, 2200>::new(ENCODER_PERIOD_US as i32, 200);
 
     let data: Vec<TestKinEstData> = iter
         .map(|(timestamp, angle)| {
-            // let (est_angle, est_velocity) = pll.update(angle);
+            let (est_angle, est_velocity) = pll.update(angle);
             TestKinEstData {
                 timestamp,
                 angle,
-                est_angle: angle,
-                est_velocity: 0,
+                est_angle,
+                est_velocity,
             }
         })
         .collect();

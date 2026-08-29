@@ -7,17 +7,17 @@ pub struct ConstantSpeedAngleIter {
     ts: u64,
     period_us: u64,
     duration_us: u64,
-    angle: Angle,
-    step: i32,
+    angle: f32,
+    step: f32,
 }
 
 impl ConstantSpeedAngleIter {
-    pub fn from_raw_step(start: Angle, step: i32, period_us: u64, duration_us: u64) -> Self {
+    pub fn from_raw_step(start: Angle, step: f32, period_us: u64, duration_us: u64) -> Self {
         Self {
             ts: 0,
             period_us,
             duration_us,
-            angle: start,
+            angle: start.raw_value() as f32,
             step,
         }
     }
@@ -28,12 +28,22 @@ impl ConstantSpeedAngleIter {
         period_us: u64,
         duration_us: u64,
     ) -> Self {
-        let step = (velocity * period_us as i32) / (Duration::from_secs(1).as_micros() as i32);
+        let step =
+            (velocity * period_us as i32) as f32 / (Duration::from_secs(1).as_micros() as f32);
+
+        println!(
+            "velocity = {}, period_us = {}, duration = {}, step = {}",
+            velocity,
+            period_us,
+            Duration::from_secs(1).as_micros() as i32,
+            step
+        );
+
         Self::from_raw_step(start, step, period_us, duration_us)
     }
 
     pub fn _current(&self) -> Angle {
-        self.angle
+        Angle::from_raw(self.angle as i32)
     }
 }
 
@@ -43,13 +53,14 @@ impl Iterator for ConstantSpeedAngleIter {
     fn next(&mut self) -> Option<Self::Item> {
         let ts = self.ts;
         let angle = self.angle;
-        self.angle = (self.angle + Angle::from_raw(self.step)).normalized();
+
+        self.angle = self.angle + self.step;
         self.ts = self.ts + self.period_us;
 
         if ts >= self.duration_us {
             None
         } else {
-            Some((ts, angle))
+            Some((ts, Angle::from_raw(angle as i32)))
         }
     }
 }
