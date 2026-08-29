@@ -3,7 +3,7 @@ use std::{
     io::{BufWriter, Error, Write},
 };
 
-use crate::TestKinEstData;
+use crate::{Angle, TestKinEstData};
 
 /// Writes a slice (or Vec) of TestKinEstData to a CSV file.
 pub fn write_to_csv(data: Vec<TestKinEstData>, filename: &str) -> Result<(), Error> {
@@ -11,16 +11,21 @@ pub fn write_to_csv(data: Vec<TestKinEstData>, filename: &str) -> Result<(), Err
     let mut wtr = BufWriter::new(file);
 
     // Write the CSV header
-    writeln!(wtr, "timestamp,angle,est_angle,est_velocity")?;
+    writeln!(
+        wtr,
+        "timestamp,angle,angle_deg,est_angle,est_angle_deg,est_velocity"
+    )?;
 
     // Write each row
     for row in data {
         writeln!(
             wtr,
-            "{},{},{},{}",
+            "{},{},{:.2},{},{:.2},{}",
             row.timestamp,
-            row.angle.raw_value(),     // Update this to match your HAL
-            row.est_angle.raw_value(), // Update this to match your HAL
+            row.angle.raw_value(),
+            row.angle.raw_value() as f32 * 360.0 / Angle::MAX_VALUE as f32,
+            row.est_angle.raw_value(),
+            row.est_angle.raw_value() as f32 * 360.0 / Angle::MAX_VALUE as f32,
             row.est_velocity
         )?;
     }

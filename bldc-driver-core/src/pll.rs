@@ -3,6 +3,7 @@ use bldc_driver_hal::IntAngle;
 use crate::{EncoderReceiver, KinematicEstSender};
 
 /// PLL observer (used to reduce voltage phase lag)
+#[derive(Debug)]
 pub struct PllObserver<const BITS: usize, const MAX_SPEED_RPM: i32> {
     /// Estimated angle
     angle_est: IntAngle<BITS>,
@@ -39,28 +40,45 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
             "MAX_SPEED_RPM exceeds the speed that can be set in an i32: \ni32::MAX / (1 << BITS) * 60"
         );
 
-        let omega_n = IntAngle::<BITS>::A360.raw_value() * bandwidth_hz;
+        let omega_n = 6 * bandwidth_hz;
         let zeta = core::f32::consts::FRAC_1_SQRT_2; // ~0.707
+
+        log::debug!("omega_n = {}", omega_n);
 
         let ki = omega_n * omega_n;
 
-        Self {
+        let pll = Self {
             angle_est: IntAngle::new(0),
             velocity_est: 0,
             integral_term: 0,
-            kp_num: omega_n * ((2.0 * zeta * 1_000.0) as i32),
-            kp_den: 1_000,
+            kp_num: omega_n * ((2.0 * zeta * 1_000.0) as i32) / 1_000,
+            kp_den: 1,
             ki_ts_num: ki * period_us / 1_000,
             ki_ts_den: 1_000,
             period_us,
-        }
+        };
+
+        log::debug!("PLL: {:?}", pll);
+
+        pll
     }
+
+    const ANGLE_EST_SHIFT: usize = 0;
 
     /// Updates the observer with a new raw encoder angle
     #[inline(always)]
     pub fn update(&mut self, angle_read: IntAngle<BITS>) -> (IntAngle<BITS>, i32) {
         // Phase Detector: Calculate estimation error
-        let error = (angle_read - self.angle_est).raw_value();
+
+        let mut error = angle_read.raw_value() - self.angle_est.raw_value();
+
+        // Fast wrap using 'if' instead of modulo or while.
+        // At 100kHz, error will never exceed a single 2π rotation per tick.
+        if error > IntAngle::<BITS>::A180.raw_value() {
+            error -= IntAngle::<BITS>::A360.raw_value();
+        } else if error < -IntAngle::<BITS>::A180.raw_value() {
+            error += IntAngle::<BITS>::A360.raw_value();
+        }
 
         // Loop Filter: PI controller calculates the estimated velocity
         let proportional = self.kp_num * error / self.kp_den;
@@ -71,15 +89,20 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
         // Integrator: Calculate next estimated angle
         self.angle_est += IntAngle::from_raw(self.velocity_est * self.period_us / 1_000_000);
 
+        log::debug!(
+            "e = {}, p = {}, i = {} [ angle {} velocity {}]",
+            error,
+            proportional,
+            self.integral_term,
+            self.angle_est,
+            self.velocity_est
+        );
+
         (self.angle_est, self.velocity_est)
     }
 
     pub fn _angle_est(&self) -> IntAngle<BITS> {
-        self.angle_est
-    }
-
-    pub fn _velocity_est(&self) -> i32 {
-        self.velocity_est
+        IntAngle::from_raw(self.angle_est.raw_value() >> Self::ANGLE_EST_SHIFT)
     }
 }
 

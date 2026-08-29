@@ -8,7 +8,7 @@ mod angle_iter;
 mod csv;
 
 const BITS: usize = 14;
-const ENCODER_FREQUENCY_HZ: u32 = 100;
+const ENCODER_FREQUENCY_HZ: u32 = 100_000;
 const ENCODER_PERIOD_US: u64 =
     (Duration::from_secs(1).as_micros() as u64) / (ENCODER_FREQUENCY_HZ as u64);
 type Angle = IntAngle<BITS>;
@@ -27,13 +27,13 @@ fn main() {
     const TEST_SPEED: i32 = Angle::A360.raw_value() / 1;
 
     let iter = ConstantSpeedAngleIter::from_int_angle_per_second(
-        Angle::new(0),
+        Angle::from_raw(2),
         TEST_SPEED,
         ENCODER_PERIOD_US,
-        1_000_000,
+        5_000,
     );
 
-    let mut pll = PllObserver::<BITS, 2200>::new(ENCODER_PERIOD_US as i32, 200);
+    let mut pll = PllObserver::<BITS, 2200>::new(ENCODER_PERIOD_US as i32, 300);
 
     let data: Vec<TestKinEstData> = iter
         .map(|(timestamp, angle)| {
