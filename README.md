@@ -26,6 +26,8 @@
 
 - [Estimated current mode theory](https://docs.simplefoc.com/voltage_torque_control#estimated-current-mode-theory)
 
+- [How to Build a Fixed-Point PI Controller](https://www.embeddedrelated.com/showarticle/123.php)
+
 ## `impl Steps` for FOC control algorithm
 - `IN`: encoder angle
 
