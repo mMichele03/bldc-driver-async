@@ -27,13 +27,13 @@ fn main() {
     const TEST_SPEED: i32 = Angle::A360.raw_value() / 1;
 
     let iter = ConstantSpeedAngleIter::from_int_angle_per_second(
-        Angle::from_raw(2),
+        Angle::from_raw(0),
         TEST_SPEED,
         ENCODER_PERIOD_US,
-        5_000,
+        7_000,
     );
 
-    let mut pll = PllObserver::<BITS, 2200>::new(ENCODER_PERIOD_US as i32, 300);
+    let mut pll = PllObserver::<BITS, 2200>::new(ENCODER_PERIOD_US as i32, 600);
 
     let data: Vec<TestKinEstData> = iter
         .map(|(timestamp, angle)| {

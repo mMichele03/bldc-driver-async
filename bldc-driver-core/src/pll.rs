@@ -6,7 +6,7 @@ use crate::{EncoderReceiver, KinematicEstSender};
 #[derive(Debug)]
 pub struct PllObserver<const BITS: usize, const MAX_SPEED_RPM: i32> {
     /// Estimated angle
-    angle_est: IntAngle<BITS>,
+    angle_est: i32,
     /// Estimated angular velocity (in IntAngle/s)
     velocity_est: i32,
     /// Internal state of the PI controller
@@ -48,7 +48,7 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
         let ki = omega_n * omega_n;
 
         let pll = Self {
-            angle_est: IntAngle::new(0),
+            angle_est: 0,
             velocity_est: 0,
             integral_term: 0,
             kp_num: omega_n * ((2.0 * zeta * 1_000.0) as i32) / 1_000,
@@ -63,14 +63,14 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
         pll
     }
 
-    const ANGLE_EST_SHIFT: usize = 0;
+    const ANGLE_EST_FACTOR: i32 = 32;
 
     /// Updates the observer with a new raw encoder angle
     #[inline(always)]
     pub fn update(&mut self, angle_read: IntAngle<BITS>) -> (IntAngle<BITS>, i32) {
         // Phase Detector: Calculate estimation error
 
-        let mut error = angle_read.raw_value() - self.angle_est.raw_value();
+        let mut error = angle_read.raw_value() - (self.angle_est / Self::ANGLE_EST_FACTOR);
 
         // Fast wrap using 'if' instead of modulo or while.
         // At 100kHz, error will never exceed a single 2π rotation per tick.
@@ -87,7 +87,13 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
         self.velocity_est = proportional + self.integral_term;
 
         // Integrator: Calculate next estimated angle
-        self.angle_est += IntAngle::from_raw(self.velocity_est * self.period_us / 1_000_000);
+        self.angle_est += self.velocity_est * self.period_us * Self::ANGLE_EST_FACTOR / 1_000_000;
+
+        // if self.angle_est > IntAngle::<BITS>::A180.raw_value() {
+        //     self.angle_est -= IntAngle::<BITS>::A360.raw_value();
+        // } else if self.angle_est < -IntAngle::<BITS>::A180.raw_value() {
+        //     self.angle_est += IntAngle::<BITS>::A360.raw_value();
+        // }
 
         log::debug!(
             "e = {}, p = {}, i = {} [ angle {} velocity {}]",
@@ -98,11 +104,11 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
             self.velocity_est
         );
 
-        (self.angle_est, self.velocity_est)
+        (self.angle_est(), self.velocity_est)
     }
 
-    pub fn _angle_est(&self) -> IntAngle<BITS> {
-        IntAngle::from_raw(self.angle_est.raw_value() >> Self::ANGLE_EST_SHIFT)
+    pub fn angle_est(&self) -> IntAngle<BITS> {
+        IntAngle::from_raw(self.angle_est / Self::ANGLE_EST_FACTOR)
     }
 }
 
