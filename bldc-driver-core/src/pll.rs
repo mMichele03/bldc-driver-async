@@ -65,15 +65,22 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
         pll
     }
 
-    const ANGLE_EST_FACTOR: i32 = 1024; // 2 ^ 10
-    const HALF_ROTATION: i32 = IntAngle::<BITS>::A180.raw_value() * Self::ANGLE_EST_FACTOR;
-    const FULL_ROTATION: i32 = IntAngle::<BITS>::A360.raw_value() * Self::ANGLE_EST_FACTOR;
+    /// The fixed internal precision of the PLL observer.
+    const PLL_BITS: usize = 24;
+
+    /// Bit shift required to move from encoder BITS to PLL_BITS.
+    /// Rust will helpfully throw a compile-time error here if BITS > PLL_BITS
+    /// due to usize underflow, acting as a built-in safety check.
+    const SHIFT: usize = Self::PLL_BITS - BITS;
+
+    const HALF_ROTATION: i32 = IntAngle::<BITS>::A180.raw_value() << Self::SHIFT;
+    const FULL_ROTATION: i32 = IntAngle::<BITS>::A360.raw_value() << Self::SHIFT;
 
     /// Updates the observer with a new raw encoder angle
     #[inline(always)]
     pub fn update(&mut self, angle_read: IntAngle<BITS>) -> (IntAngle<BITS>, i32) {
         // Phase Detector: Calculate estimation error
-        let target_angle = angle_read.raw_value() * Self::ANGLE_EST_FACTOR;
+        let target_angle = angle_read.raw_value() << Self::SHIFT;
         let mut error = target_angle - self.angle_est;
 
         // Fast wrap using 'if' instead of modulo or while.
@@ -88,10 +95,10 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
         let proportional = self.kp_num * error / self.kp_den;
         self.integral_term += (self.ki_ts_num as i64 * error as i64) / self.ki_ts_den as i64;
 
-        // loop_output = kp * error + ki_ts * error + integral_term_prec
         let loop_output = proportional as i64 + self.integral_term;
 
-        self.velocity_est = (self.integral_term / Self::ANGLE_EST_FACTOR as i64) as i32;
+        // Use arithmetic right shift (>>) which correctly preserves the sign bit in Rust.
+        self.velocity_est = (self.integral_term >> Self::SHIFT) as i32;
 
         // Integrator: Calculate next estimated angle
         let angle_inc = (loop_output * self.period_us as i64) / 1_000_000;
@@ -116,7 +123,7 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
     }
 
     pub fn angle_est(&self) -> IntAngle<BITS> {
-        IntAngle::from_raw(self.angle_est / Self::ANGLE_EST_FACTOR)
+        IntAngle::from_raw(self.angle_est >> Self::SHIFT)
     }
 }
 
