@@ -16,6 +16,7 @@ type Angle = IntAngle<BITS>;
 struct TestKinEstData {
     pub timestamp: u64,
     pub angle: Angle,
+    pub velocity: i32,
     pub est_angle: Angle,
     pub est_velocity: i32,
 }
@@ -36,13 +37,14 @@ fn main() {
     let mut pll = PllObserver::<BITS, 2200>::new(ENCODER_PERIOD_US as i32, 1000);
 
     let data: Vec<TestKinEstData> = iter
-        .map(|(timestamp, angle)| {
-            let (est_angle, est_velocity) = pll.update(angle);
+        .map(|item| {
+            let (est_angle, est_velocity) = pll.update(item.angle);
             TestKinEstData {
-                timestamp,
-                angle,
+                timestamp: item.ts,
+                angle: item.angle,
                 est_angle,
                 est_velocity,
+                velocity: item.velocity,
             }
         })
         .collect();

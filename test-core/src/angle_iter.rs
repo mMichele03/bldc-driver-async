@@ -3,22 +3,37 @@ use std::time::Duration;
 use crate::Angle;
 
 #[derive(Debug, Clone, Copy)]
+pub struct AngleIterItem {
+    pub ts: u64,
+    pub angle: Angle,
+    pub velocity: i32,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct ConstantSpeedAngleIter {
     ts: u64,
     period_us: u64,
     duration_us: u64,
     angle: f32,
     step: f32,
+    velocity: i32,
 }
 
 impl ConstantSpeedAngleIter {
-    pub fn from_raw_step(start: Angle, step: f32, period_us: u64, duration_us: u64) -> Self {
+    pub fn from_raw_step(
+        start: Angle,
+        step: f32,
+        period_us: u64,
+        duration_us: u64,
+        velocity: i32,
+    ) -> Self {
         Self {
             ts: 0,
             period_us,
             duration_us,
             angle: start.raw_value() as f32,
             step,
+            velocity,
         }
     }
 
@@ -39,7 +54,7 @@ impl ConstantSpeedAngleIter {
             step
         );
 
-        Self::from_raw_step(start, step, period_us, duration_us)
+        Self::from_raw_step(start, step, period_us, duration_us, velocity)
     }
 
     pub fn _current(&self) -> Angle {
@@ -48,7 +63,7 @@ impl ConstantSpeedAngleIter {
 }
 
 impl Iterator for ConstantSpeedAngleIter {
-    type Item = (u64, Angle);
+    type Item = AngleIterItem;
 
     fn next(&mut self) -> Option<Self::Item> {
         let ts = self.ts;
@@ -60,7 +75,11 @@ impl Iterator for ConstantSpeedAngleIter {
         if ts >= self.duration_us {
             None
         } else {
-            Some((ts, Angle::from_raw(angle as i32)))
+            Some(AngleIterItem {
+                ts,
+                angle: Angle::from_raw(angle as i32),
+                velocity: self.velocity,
+            })
         }
     }
 }
