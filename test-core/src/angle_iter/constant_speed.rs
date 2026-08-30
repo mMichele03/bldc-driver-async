@@ -1,13 +1,6 @@
 use std::time::Duration;
 
-use crate::Angle;
-
-#[derive(Debug, Clone, Copy)]
-pub struct AngleIterItem {
-    pub ts: u64,
-    pub angle: Angle,
-    pub velocity: i32,
-}
+use crate::{Angle, angle_iter::AngleIterItem};
 
 #[derive(Debug, Clone, Copy)]
 pub struct ConstantSpeedAngleIter {
@@ -20,13 +13,10 @@ pub struct ConstantSpeedAngleIter {
 }
 
 impl ConstantSpeedAngleIter {
-    pub fn from_raw_step(
-        start: Angle,
-        step: f32,
-        period_us: u64,
-        duration_us: u64,
-        velocity: i32,
-    ) -> Self {
+    pub fn new(start: Angle, velocity: i32, period_us: u64, duration_us: u64) -> Self {
+        let step =
+            (velocity * period_us as i32) as f32 / (Duration::from_secs(1).as_micros() as f32);
+
         Self {
             ts: 0,
             period_us,
@@ -35,26 +25,6 @@ impl ConstantSpeedAngleIter {
             step,
             velocity,
         }
-    }
-
-    pub fn from_int_angle_per_second(
-        start: Angle,
-        velocity: i32,
-        period_us: u64,
-        duration_us: u64,
-    ) -> Self {
-        let step =
-            (velocity * period_us as i32) as f32 / (Duration::from_secs(1).as_micros() as f32);
-
-        println!(
-            "velocity = {}, period_us = {}, duration = {}, step = {}",
-            velocity,
-            period_us,
-            Duration::from_secs(1).as_micros() as i32,
-            step
-        );
-
-        Self::from_raw_step(start, step, period_us, duration_us, velocity)
     }
 
     pub fn _current(&self) -> Angle {

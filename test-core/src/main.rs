@@ -2,7 +2,10 @@ use bldc_driver_core::pll::PllObserver;
 use bldc_driver_hal::IntAngle;
 use std::time::Duration;
 
-use crate::{angle_iter::ConstantSpeedAngleIter, csv::write_to_csv};
+use crate::{
+    angle_iter::{constant_speed::ConstantSpeedAngleIter, ramp_speed::RampSpeedAngleIter},
+    csv::write_to_csv,
+};
 
 mod angle_iter;
 mod csv;
@@ -25,13 +28,15 @@ fn main() {
     env_logger::init();
     log::info!("Logger started.");
 
-    const TEST_SPEED: i32 = Angle::A360.raw_value() / 1;
+    const TEST_SPEED: i32 = 1 * Angle::A360.raw_value() / 1;
 
-    let iter = ConstantSpeedAngleIter::from_int_angle_per_second(
-        Angle::from_raw(0),
+    let iter = RampSpeedAngleIter::new(
+        Angle::from_raw(10),
+        0,
         TEST_SPEED,
+        5_000,
         ENCODER_PERIOD_US,
-        7_000,
+        10_000,
     );
 
     let mut pll = PllObserver::<BITS, 2200>::new(ENCODER_PERIOD_US as i32, 1000);
@@ -42,10 +47,17 @@ fn main() {
             TestKinEstData {
                 timestamp: item.ts,
                 angle: item.angle,
+                velocity: item.velocity,
                 est_angle,
                 est_velocity,
-                velocity: item.velocity,
             }
+            // TestKinEstData {
+            //     timestamp: item.ts,
+            //     angle: item.angle,
+            //     velocity: item.velocity,
+            //     est_angle: Angle::from_raw(0),
+            //     est_velocity: 0,
+            // }
         })
         .collect();
 

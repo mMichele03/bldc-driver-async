@@ -5,6 +5,16 @@ use std::{
 
 use crate::{Angle, TestKinEstData};
 
+fn _wrap_angle_around_0(angle: Angle) -> i32 {
+    if angle.raw_value() > Angle::A180.raw_value() {
+        angle.raw_value() - Angle::A360.raw_value()
+    } else if angle.raw_value() < -Angle::A180.raw_value() {
+        angle.raw_value() + Angle::A360.raw_value()
+    } else {
+        angle.raw_value()
+    }
+}
+
 /// Writes a slice (or Vec) of TestKinEstData to a CSV file.
 pub fn write_to_csv(data: Vec<TestKinEstData>, filename: &str) -> Result<(), Error> {
     let file = File::create(filename)?;
