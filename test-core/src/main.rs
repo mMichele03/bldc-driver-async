@@ -33,7 +33,7 @@ fn main() {
         7_000,
     );
 
-    let mut pll = PllObserver::<BITS, 2200>::new(ENCODER_PERIOD_US as i32, 600);
+    let mut pll = PllObserver::<BITS, 2200>::new(ENCODER_PERIOD_US as i32, 1000);
 
     let data: Vec<TestKinEstData> = iter
         .map(|(timestamp, angle)| {

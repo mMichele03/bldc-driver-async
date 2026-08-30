@@ -10,7 +10,7 @@ pub struct PllObserver<const BITS: usize, const MAX_SPEED_RPM: i32> {
     /// Estimated angular velocity (in IntAngle/s)
     velocity_est: i32,
     /// Internal state of the PI controller
-    integral_term: i32,
+    integral_term: i64,
     /// Proportional gain (numerator)
     kp_num: i32,
     /// Proportional gain (denominator)
@@ -40,6 +40,8 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
             "MAX_SPEED_RPM exceeds the speed that can be set in an i32: \ni32::MAX / (1 << BITS) * 60"
         );
 
+        // TODO: assert on i64
+
         let omega_n = 6 * bandwidth_hz;
         let zeta = core::f32::consts::FRAC_1_SQRT_2; // ~0.707
 
@@ -63,37 +65,43 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
         pll
     }
 
-    const ANGLE_EST_FACTOR: i32 = 32;
+    const ANGLE_EST_FACTOR: i32 = 1024; // 2 ^ 10
+    const HALF_ROTATION: i32 = IntAngle::<BITS>::A180.raw_value() * Self::ANGLE_EST_FACTOR;
+    const FULL_ROTATION: i32 = IntAngle::<BITS>::A360.raw_value() * Self::ANGLE_EST_FACTOR;
 
     /// Updates the observer with a new raw encoder angle
     #[inline(always)]
     pub fn update(&mut self, angle_read: IntAngle<BITS>) -> (IntAngle<BITS>, i32) {
         // Phase Detector: Calculate estimation error
-
-        let mut error = angle_read.raw_value() - (self.angle_est / Self::ANGLE_EST_FACTOR);
+        let target_angle = angle_read.raw_value() * Self::ANGLE_EST_FACTOR;
+        let mut error = target_angle - self.angle_est;
 
         // Fast wrap using 'if' instead of modulo or while.
         // At 100kHz, error will never exceed a single 2π rotation per tick.
-        if error > IntAngle::<BITS>::A180.raw_value() {
-            error -= IntAngle::<BITS>::A360.raw_value();
-        } else if error < -IntAngle::<BITS>::A180.raw_value() {
-            error += IntAngle::<BITS>::A360.raw_value();
+        if error > Self::HALF_ROTATION {
+            error -= Self::FULL_ROTATION;
+        } else if error < -Self::HALF_ROTATION {
+            error += Self::FULL_ROTATION;
         }
 
         // Loop Filter: PI controller calculates the estimated velocity
         let proportional = self.kp_num * error / self.kp_den;
-        self.integral_term += self.ki_ts_num * error / self.ki_ts_den;
+        self.integral_term += (self.ki_ts_num as i64 * error as i64) / self.ki_ts_den as i64;
 
-        self.velocity_est = proportional + self.integral_term;
+        // loop_output = kp * error + ki_ts * error + integral_term_prec
+        let loop_output = proportional as i64 + self.integral_term;
+
+        self.velocity_est = (self.integral_term / Self::ANGLE_EST_FACTOR as i64) as i32;
 
         // Integrator: Calculate next estimated angle
-        self.angle_est += self.velocity_est * self.period_us * Self::ANGLE_EST_FACTOR / 1_000_000;
+        let angle_inc = (loop_output * self.period_us as i64) / 1_000_000;
+        self.angle_est += angle_inc as i32;
 
-        // if self.angle_est > IntAngle::<BITS>::A180.raw_value() {
-        //     self.angle_est -= IntAngle::<BITS>::A360.raw_value();
-        // } else if self.angle_est < -IntAngle::<BITS>::A180.raw_value() {
-        //     self.angle_est += IntAngle::<BITS>::A360.raw_value();
-        // }
+        if self.angle_est > Self::FULL_ROTATION {
+            self.angle_est -= Self::FULL_ROTATION;
+        } else if self.angle_est < -Self::FULL_ROTATION {
+            self.angle_est += Self::FULL_ROTATION;
+        }
 
         log::debug!(
             "e = {}, p = {}, i = {} [ angle {} velocity {}]",
