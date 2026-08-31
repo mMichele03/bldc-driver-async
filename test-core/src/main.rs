@@ -1,17 +1,17 @@
-use bldc_driver_core::pll::PllObserver;
+use bldc_driver_core::{
+    controller::controller_cycle,
+    pll::{KinematicEst, PllObserver},
+};
 use bldc_driver_hal::IntAngle;
 use std::time::Duration;
 
 use crate::{
-    angle_iter::{
-        constant_speed::ConstantSpeedAngleIter, ramp_speed::RampSpeedAngleIter,
-        sinusoidal_speed::SinusoidalSpeedAngleIter,
-    },
-    csv::write_to_csv,
+    angle_iter::constant_speed::ConstantSpeedAngleIter, csv::write_to_csv, motor::TestMotor,
 };
 
 mod angle_iter;
 mod csv;
+mod motor;
 
 const BITS: usize = 14;
 const ENCODER_FREQUENCY_HZ: u32 = 100_000;
@@ -19,12 +19,15 @@ const ENCODER_PERIOD_US: u64 =
     (Duration::from_secs(1).as_micros() as u64) / (ENCODER_FREQUENCY_HZ as u64);
 type Angle = IntAngle<BITS>;
 
-struct TestKinEstData {
+struct TestData {
     pub timestamp: u64,
     pub angle: Angle,
     pub velocity: i32,
     pub est_angle: Angle,
     pub est_velocity: i32,
+    pub pwm_a: u32,
+    pub pwm_b: u32,
+    pub pwm_c: u32,
 }
 
 fn main() {
@@ -33,26 +36,30 @@ fn main() {
 
     const TEST_SPEED: i32 = 4 * Angle::A360.raw_value() / 1;
 
-    let iter = SinusoidalSpeedAngleIter::new(
-        Angle::from_raw(10),
-        0,
-        TEST_SPEED,
-        5_000,
-        ENCODER_PERIOD_US,
-        10_000,
-    );
+    let iter =
+        ConstantSpeedAngleIter::new(Angle::from_raw(10), TEST_SPEED, ENCODER_PERIOD_US, 10_000);
 
     let mut pll = PllObserver::<BITS, 2200>::new(ENCODER_PERIOD_US as i32, 1000);
 
-    let data: Vec<TestKinEstData> = iter
+    let data: Vec<TestData> = iter
         .map(|item| {
             let (est_angle, est_velocity) = pll.update(item.angle);
-            TestKinEstData {
+            let kin_data = KinematicEst {
+                angle: est_angle,
+                velocity: est_velocity,
+                timestamp: item.ts,
+            };
+            let (pwm_a, pwm_b, pwm_c) = controller_cycle::<BITS, TestMotor>(kin_data, 10);
+
+            TestData {
                 timestamp: item.ts,
                 angle: item.angle,
                 velocity: item.velocity,
                 est_angle,
                 est_velocity,
+                pwm_a,
+                pwm_b,
+                pwm_c,
             }
         })
         .collect();
