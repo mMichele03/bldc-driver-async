@@ -2,6 +2,7 @@ use crate::Angle;
 
 pub mod constant_speed;
 pub mod ramp_speed;
+pub mod sinusoidal_speed;
 
 #[derive(Debug, Clone, Copy)]
 pub struct AngleIterItem {
