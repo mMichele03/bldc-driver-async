@@ -48,6 +48,21 @@ pub trait BldcMotor<const BITS: usize> {
     /// The desired frequency of the motor control
     const PWM_FREQ: u32;
 
+    /// The lag in microseconds between when `wake_to_set_pwm` returns
+    /// and when the pwm will actually take effect (let's say the middle of the next waveform).
+    /// Therefore, with 1-cycle delay, this lag defaults at 1.5 cycles.
+    /// This is used internally by the core to estimate the angle at which the motor will be in that exact moment in the future.
+    /// Note: we suggest implementing the pwm in phase-corrected mode.
+    const PWM_CONTROL_LAG_US: u64 =
+        (Duration::from_secs(1).as_micros() * 3) / (Self::PWM_FREQ as u64 * 2);
+
+    /// Wakes up when the control loop has to configure the pwm for the next period,
+    /// that is at the start or in the middle of the previous one.  
+    /// The easiest implementation is to be triggered by the pwm reset, which introduces necessarily a full 1-cycle delay.
+    /// If you are able to make an implementation that reduces this lag (or changes it anyway),
+    /// please override the `PWM_CONTROL_LAG_US` constant to make the control loop work as intended.
+    fn wake_to_set_pwm(&self) -> impl Future<Output = ()> + Send;
+
     /// Sets in hardware the values of the three PWM channels (scaled on TOP)
     fn set_pwm(&mut self, a: u32, b: u32, c: u32);
 

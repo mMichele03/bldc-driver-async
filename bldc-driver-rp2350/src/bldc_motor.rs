@@ -1,11 +1,25 @@
 use super::encoder::ENCODER_BITS;
 use bldc_driver_hal::BldcMotor;
-use embassy_rp::Peri;
 use embassy_rp::gpio::{Level, Output};
 use embassy_rp::peripherals::{PIN_6, PIN_7, PIN_8, PIN_9, PWM_SLICE3, PWM_SLICE4};
 use embassy_rp::pwm::{Config, Pwm, SetDutyCycle};
+use embassy_rp::{Peri, interrupt, pac};
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::signal::Signal;
 use fixed::FixedU16;
 use fixed::types::extra::U4;
+
+static PWM_SYNC: Signal<CriticalSectionRawMutex, ()> = Signal::new();
+
+// The RP2350 has two PWM IRQs. We are using IRQ 0.
+#[interrupt]
+fn PWM_IRQ_WRAP_0() {
+    // Call set_ch0 to clear the interrupt flag for our specific slice (here Slice 3)
+    pac::PWM.intr().write(|w| w.set_ch3(true));
+
+    // Signal the task
+    PWM_SYNC.signal(());
+}
 
 pub struct RpBldcMotor {
     pwm_ab: Pwm<'static>,
@@ -34,6 +48,14 @@ impl RpBldcMotor {
         let pwm_ab = Pwm::new_output_ab(slice_3, pin_6, pin_7, config.clone());
         let pwm_c = Pwm::new_output_a(slice_4, pin_8, config);
 
+        // Enable the hardware interrupt for our specific slice (here Slice 3)
+        pac::PWM.irq0_inte().modify(|w| w.set_ch3(true));
+
+        // Enable the IRQ in the NVIC
+        unsafe {
+            cortex_m::peripheral::NVIC::unmask(pac::Interrupt::PWM_IRQ_WRAP_0);
+        }
+
         Self { pwm_ab, pwm_c, _en }
     }
 }
@@ -59,5 +81,9 @@ impl BldcMotor<ENCODER_BITS> for RpBldcMotor {
             .unwrap();
 
         log::debug!("a b c : {a} {b} {c}");
+    }
+
+    fn wake_to_set_pwm(&self) -> impl Future<Output = ()> + Send {
+        PWM_SYNC.wait()
     }
 }
