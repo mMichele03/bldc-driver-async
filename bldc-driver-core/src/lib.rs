@@ -8,6 +8,7 @@ use embassy_sync::{
 
 use crate::pll::KinematicEst;
 
+pub mod controller;
 pub mod encoder;
 pub mod pll;
 pub mod telemetry;
@@ -73,6 +74,16 @@ macro_rules! generate_bldc_driver_tasks {
         }
 
         #[embassy_executor::task]
+        async fn controller_task(motor: $motor, receiver: $crate::KinematicEstReceiver<{ $bits }>) {
+            $crate::controller::controller_run::<{ $bits }, $motor>(
+                motor,
+                receiver,
+                <$encoder as bldc_driver_hal::Encoder<{ $bits }>>::ENCODER_PERIOD_US as u32,
+            )
+            .await;
+        }
+
+        #[embassy_executor::task]
         pub async fn telemetry_task(flash: $flash, frequency: u32, duration_us: u64) {
             $crate::telemetry::telemetry_run::<{ $bits }, { $buffer_len }>(
                 frequency,
@@ -106,7 +117,7 @@ macro_rules! generate_bldc_driver_tasks {
 
         pub fn run_bldc_driver_loop(
             spawner: embassy_executor::Spawner,
-            _motor: $motor,
+            motor: $motor,
             encoder: $encoder,
             pll_bandwidth_hz: i32,
         ) {
@@ -124,6 +135,16 @@ macro_rules! generate_bldc_driver_tasks {
                     pll_bandwidth_hz,
                 )
                 .expect("Failed to allocate pll observer task"),
+            );
+
+            spawner.spawn(
+                controller_task(
+                    motor,
+                    KINEMATIC_EST_WATCH
+                        .receiver()
+                        .expect("Kinematic estimation watch run out of receivers"),
+                )
+                .expect("Failed to allocate controller task"),
             );
         }
     };
