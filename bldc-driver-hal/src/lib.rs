@@ -42,6 +42,44 @@ pub trait Encoder<const BITS: usize> {
 
 /// BLDC motor controlled by 3-phase PWM
 pub trait BldcMotor<const BITS: usize> {
+    //  #######################  MOTOR CONSTANTS  #######################
+    //  PAY ATTENTION TO MEASUREMENT UNITS !!!
+
+    /// DC resistance of one motor phase winding.
+    /// Used to estimate copper losses and current response from the applied voltage.
+    /// Stored as integer milli-Ohms, i.e. value = resistance in mΩ.
+    const PHASE_RESISTANCE: i32;
+
+    /// Equivalent q-axis inductance of the motor.
+    /// It describes how quickly stator current can change and is used in current dynamics.
+    /// Stored as integer microhenries, i.e. value = inductance in µH.
+    const Q_AXIS_INDUCTANCE: i32;
+
+    /// Number of magnetic pole pairs in the motor.
+    /// This converts electrical angle to mechanical rotation and affects commutation timing.
+    /// Dimensionless integer: 1, 2, 3, ...
+    const POLE_PAIRS: i32;
+
+    /// Back-EMF constant of the motor.
+    /// It relates rotor speed to generated voltage and is used for speed/current estimation.
+    /// Stored as integer microvolts per seconds over rad, i.e. value = k_e in µV·s/rad .
+    const BACK_EMF_COEFFICIENT: i32;
+
+    /// Torque constant of the motor.
+    /// It relates current to generated electromagnetic torque and is used in torque control.
+    /// Stored as integer milli-Nm/A or equivalent scaled integer representation.
+    const TORQUE_COEFFICIENT: i32;
+
+    /// Maximum allowed phase voltage for the motor driver.
+    /// Stored as integer microvolts, i.e. value = voltage in µV.
+    const MAX_VOLTAGE: i32;
+
+    /// Maximum allowed motor current.
+    /// Stored as integer microamps, i.e. value = current in µA.
+    const MAX_CURRENT: i32;
+
+    //  #############################  PWM  #############################
+
     /// The maximum value the hardware timer reaches before wrapping
     const PWM_TOP: u32;
 

@@ -174,15 +174,7 @@ impl<const BITS: usize> core::ops::Mul<i32> for IntAngle<BITS> {
     type Output = Self;
 
     fn mul(self, rhs: i32) -> Self::Output {
-        Self((self.0 * rhs) / Self::MAX_VALUE)
-    }
-}
-
-impl<const BITS: usize> core::ops::Div<i32> for IntAngle<BITS> {
-    type Output = Self;
-
-    fn div(self, rhs: i32) -> Self::Output {
-        Self((self.0 * Self::MAX_VALUE) / rhs)
+        Self(self.0 * rhs).normalized()
     }
 }
 

@@ -61,8 +61,15 @@ impl RpBldcMotor {
 }
 
 impl BldcMotor<ENCODER_BITS> for RpBldcMotor {
-    const PWM_TOP: u32 = RpBldcMotor::PWM_TOP;
+    const PHASE_RESISTANCE: i32 = 5600;
+    const Q_AXIS_INDUCTANCE: i32 = 4600;
+    const POLE_PAIRS: i32 = 7;
+    const BACK_EMF_COEFFICIENT: i32 = 47_000_000;
+    const TORQUE_COEFFICIENT: i32 = 70;
+    const MAX_VOLTAGE: i32 = 12_000_000;
+    const MAX_CURRENT: i32 = 2_000_000;
 
+    const PWM_TOP: u32 = RpBldcMotor::PWM_TOP;
     const PWM_FREQ: u32 = 60000;
 
     fn set_pwm(&mut self, a: u32, b: u32, c: u32) {
