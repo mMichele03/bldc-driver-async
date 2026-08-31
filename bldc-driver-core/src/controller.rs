@@ -84,21 +84,20 @@ fn inverse_park_clarke<const BITS: usize>(
     q_axis_voltage_uv: i32,
     d_axis_voltage_uv: i32,
     pwm_top: u32,
+    max_voltage_uv: i32,
 ) -> (u32, u32, u32) {
-    // Compute trigonometry with lookup table on integers
-    let sin_theta = electrical_angle.sin().scaled(255);
-    let cos_theta = electrical_angle.cos().scaled(255);
-    let sin_theta = sin_theta as f32 / 255.0;
-    let cos_theta = cos_theta as f32 / 255.0;
+    // 1. Compute trigonometry with lookup table on integers
+    let sin_theta = electrical_angle.sin().scaled(255) as f32 / 255.0;
+    let cos_theta = electrical_angle.cos().scaled(255) as f32 / 255.0;
 
     let v_q = q_axis_voltage_uv as f32;
     let v_d = d_axis_voltage_uv as f32;
 
-    // 2. Inverse Park Transform (Rotating to Stationary frame) with alpha-phase to d-axis alignment
+    // 2. Inverse Park Transform (Rotating to Stationary frame)
     let v_alpha = v_d * cos_theta - v_q * sin_theta;
     let v_beta = v_d * sin_theta + v_q * cos_theta;
 
-    let sqrt_3_over_2 = 0.8660254; // 0.8660254 = sqrt(3)/2
+    let sqrt_3_over_2 = 0.8660254; // sqrt(3)/2
 
     // 3. Inverse Clarke Transform (Stationary to 3-Phase frame)
     let v_a = v_alpha;
@@ -111,13 +110,20 @@ fn inverse_park_clarke<const BITS: usize>(
     let v_max = v_a.max(v_b).max(v_c);
     let v_offset = -(v_min + v_max) / 2.0;
 
+    // 5. Scale voltages to PWM duty cycle
+    // 50% duty cycle yields 0V differential.
+    // pwm_top yields +max_voltage.
+    // 0 yields -max_voltage.
     let half_pwm = (pwm_top as f32) / 2.0;
+    let volts_to_pwm_ratio = (pwm_top as f32) / (2.0 * max_voltage_uv as f32);
 
-    // 5. Apply offset, shift to absolute PWM range, and clamp
-    // We assume the input voltage amplitude was scaled such that it roughly maps to half_pwm.
-    let pwm_a = (v_a + v_offset + half_pwm).clamp(0.0, pwm_top as f32) as u32;
-    let pwm_b = (v_b + v_offset + half_pwm).clamp(0.0, pwm_top as f32) as u32;
-    let pwm_c = (v_c + v_offset + half_pwm).clamp(0.0, pwm_top as f32) as u32;
+    // Apply offset, scale by voltage-to-PWM ratio, shift to absolute PWM range, and clamp
+    let pwm_a =
+        ((v_a + v_offset) * volts_to_pwm_ratio + half_pwm).clamp(0.0, pwm_top as f32) as u32;
+    let pwm_b =
+        ((v_b + v_offset) * volts_to_pwm_ratio + half_pwm).clamp(0.0, pwm_top as f32) as u32;
+    let pwm_c =
+        ((v_c + v_offset) * volts_to_pwm_ratio + half_pwm).clamp(0.0, pwm_top as f32) as u32;
 
     (pwm_a, pwm_b, pwm_c)
 }
@@ -156,6 +162,7 @@ pub async fn controller_run<const BITS: usize, M: BldcMotor<BITS>>(
                 q_axis_voltage_uv,
                 d_axis_voltage_uv,
                 M::PWM_TOP,
+                M::MAX_VOLTAGE,
             );
 
             motor.set_pwm(pwm_a, pwm_b, pwm_c);
