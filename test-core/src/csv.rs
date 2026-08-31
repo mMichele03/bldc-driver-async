@@ -23,26 +23,33 @@ pub fn write_to_csv(data: Vec<TestData>, filename: &str) -> Result<(), Error> {
     // Write the CSV header
     writeln!(
         wtr,
-        "timestamp,angle,angle_deg,est_angle,est_angle_deg,velocity,velocity_deg_s,est_velocity,est_velocity_deg_s,pwm_a,pwm_b,pwm_c"
+        // "timestamp,angle,angle_deg,est_angle,est_angle_deg,velocity,velocity_deg_s,est_velocity,est_velocity_deg_s,pwm_a,pwm_b,pwm_c,control_angle,control_angle_deg,q_axis_voltage,d_axis_voltage,control_angle_sin"
+        "timestamp,est_angle,est_angle_deg,pwm_a,pwm_b,pwm_c,control_angle,control_angle_deg,v_A,v_B,v_C"
     )?;
 
     // Write each row
     for row in data {
         writeln!(
             wtr,
-            "{},{},{:.2},{},{:.2},{},{:.2},{},{:.2},{},{},{}",
+            // "{},{},{:.2},{},{:.2},{},{:.2},{},{:.2},{},{},{},{},{:.2},{},{},{:.5}",
+            "{},{},{:.2},{},{},{},{},{:.2},{:.5},{:.5},{:.5}",
             row.timestamp,
-            row.angle.raw_value(),
-            row.angle.raw_value() as f32 * 360.0 / Angle::MAX_VALUE as f32,
+            // row.angle.raw_value(),
+            // row.angle.raw_value() as f32 * 360.0 / Angle::MAX_VALUE as f32,
             row.est_angle.raw_value(),
             row.est_angle.raw_value() as f32 * 360.0 / Angle::MAX_VALUE as f32,
-            row.velocity,
-            row.velocity as f32 * 360.0 / Angle::MAX_VALUE as f32,
-            row.est_velocity,
-            row.est_velocity as f32 * 360.0 / Angle::MAX_VALUE as f32,
+            // row.velocity,
+            // row.velocity as f32 * 360.0 / Angle::MAX_VALUE as f32,
+            // row.est_velocity,
+            // row.est_velocity as f32 * 360.0 / Angle::MAX_VALUE as f32,
             row.pwm_a,
             row.pwm_b,
             row.pwm_c,
+            row.control_angle.raw_value(),
+            row.control_angle.raw_value() as f32 * 360.0 / Angle::MAX_VALUE as f32,
+            row.v_a,
+            row.v_b,
+            row.v_c
         )?;
     }
 

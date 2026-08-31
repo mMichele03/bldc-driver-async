@@ -3,7 +3,7 @@ use bldc_driver_hal::{BldcMotor, IntAngle};
 use crate::{KinematicEstReceiver, TorqueReceiver, pll::KinematicEst};
 
 #[inline(always)]
-fn estimate_control_angle<const BITS: usize>(
+pub fn estimate_control_angle<const BITS: usize>(
     angle: IntAngle<BITS>,
     velocity: i32,
     control_lag_us: u64,
@@ -15,7 +15,11 @@ fn estimate_control_angle<const BITS: usize>(
 }
 
 #[inline(always)]
-const fn frac_mul_velocity_to_rad_s<const BITS: usize>(velocity: i32, num: i64, den: i64) -> i64 {
+pub const fn frac_mul_velocity_to_rad_s<const BITS: usize>(
+    velocity: i32,
+    num: i64,
+    den: i64,
+) -> i64 {
     const TAU_INT_NUM: i64 = 6_283;
     const TAU_INT_DEN: i64 = 1_000;
 
@@ -24,7 +28,7 @@ const fn frac_mul_velocity_to_rad_s<const BITS: usize>(velocity: i32, num: i64, 
 }
 
 #[inline(always)]
-fn foc_algorithm<const BITS: usize, M: BldcMotor<BITS>>(
+pub fn foc_algorithm<const BITS: usize, M: BldcMotor<BITS>>(
     q_axis_current_ua: i32,
     d_axis_current_ua: i32,
     velocity: i32,
@@ -45,12 +49,13 @@ fn foc_algorithm<const BITS: usize, M: BldcMotor<BITS>>(
     // 2. Phase resistance multiplication
     let u_q_res = i_q_total * M::PHASE_RESISTANCE / 1_000;
 
-    // 3. Estimated BEMF voltage (Ke * filtered_velocity)
-    let u_bemf =
-        frac_mul_velocity_to_rad_s::<BITS>(velocity, M::BACK_EMF_COEFFICIENT as i64, 1) as i32;
+    // // 3. Estimated BEMF voltage (Ke * filtered_velocity)
+    // let u_bemf =
+    //     frac_mul_velocity_to_rad_s::<BITS>(velocity, M::BACK_EMF_COEFFICIENT as i64, 1) as i32;
 
-    // 4. Sum resistance drop and BEMF
-    let u_q_interp = u_q_res + u_bemf;
+    // // 4. Sum resistance drop and BEMF
+    // let u_q_interp = u_q_res + u_bemf;
+    let u_q_interp = u_q_res;
 
     // 5. Voltage limit & Feed-forward addition
     let u_q_limited = u_q_interp.clamp(-M::MAX_VOLTAGE, M::MAX_VOLTAGE);
@@ -67,20 +72,21 @@ fn foc_algorithm<const BITS: usize, M: BldcMotor<BITS>>(
     let u_d_res = i_d_total * M::PHASE_RESISTANCE / 1_000;
     let u_d_limited = u_d_res.clamp(-M::MAX_VOLTAGE, M::MAX_VOLTAGE);
 
-    // 3. Estimated lag voltage: u_lag = (i_q_total * L_q) * (filtered_velocity * n_pp)
-    let electrical_velocity = velocity * M::POLE_PAIRS;
-    let flux_linkage_q = i_q_total * M::Q_AXIS_INDUCTANCE / 1_000_000;
-    let u_lag =
-        frac_mul_velocity_to_rad_s::<BITS>(electrical_velocity, flux_linkage_q as i64, 1) as i32;
+    // // 3. Estimated lag voltage: u_lag = (i_q_total * L_q) * (filtered_velocity * n_pp)
+    // let electrical_velocity = velocity * M::POLE_PAIRS;
+    // let flux_linkage_q = i_q_total * M::Q_AXIS_INDUCTANCE / 1_000_000;
+    // let u_lag =
+    //     frac_mul_velocity_to_rad_s::<BITS>(electrical_velocity, flux_linkage_q as i64, 1) as i32;
 
-    // 4. Subtract lag voltage and add d-axis voltage feed-forward
-    let u_d = u_d_limited - u_lag + U_D_FF;
+    // // 4. Subtract lag voltage and add d-axis voltage feed-forward
+    // let u_d = u_d_limited - u_lag + U_D_FF;
+    let u_d = u_d_limited + U_D_FF;
 
     (u_q, u_d)
 }
 
 #[inline(always)]
-fn inverse_park_clarke<const BITS: usize>(
+pub fn inverse_park_clarke<const BITS: usize>(
     electrical_angle: IntAngle<BITS>,
     q_axis_voltage_uv: i32,
     d_axis_voltage_uv: i32,
@@ -116,7 +122,7 @@ fn inverse_park_clarke<const BITS: usize>(
     // pwm_top yields +max_voltage.
     // 0 yields -max_voltage.
     let half_pwm = (pwm_top as f32) / 2.0;
-    let volts_to_pwm_ratio = (pwm_top as f32) / (2.0 * max_voltage_uv as f32);
+    let volts_to_pwm_ratio = (pwm_top as f32) / (max_voltage_uv as f32);
 
     // Apply offset, scale by voltage-to-PWM ratio, shift to absolute PWM range, and clamp
     let pwm_a =
@@ -137,7 +143,7 @@ pub fn controller_cycle<const BITS: usize, M: BldcMotor<BITS>>(
     let control_angle =
         estimate_control_angle(kin_data.angle, kin_data.velocity, M::PWM_CONTROL_LAG_US);
 
-    let target_q_axis_current_ua = (target_torque * 1_000) / M::TORQUE_COEFFICIENT;
+    let target_q_axis_current_ua = target_torque / M::TORQUE_COEFFICIENT;
 
     let (q_axis_voltage_uv, d_axis_voltage_uv) =
         foc_algorithm::<BITS, M>(target_q_axis_current_ua, 0, kin_data.velocity);
