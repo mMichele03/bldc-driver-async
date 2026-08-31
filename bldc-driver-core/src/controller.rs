@@ -1,6 +1,6 @@
 use bldc_driver_hal::{BldcMotor, IntAngle};
 
-use crate::{KinematicEstReceiver, TorqueReceiver};
+use crate::{KinematicEstReceiver, TorqueReceiver, pll::KinematicEst};
 
 #[inline(always)]
 fn estimate_control_angle<const BITS: usize>(
@@ -14,6 +14,7 @@ fn estimate_control_angle<const BITS: usize>(
     IntAngle::from_raw(angle.raw_value().wrapping_add(delta_angle as i32))
 }
 
+#[inline(always)]
 const fn frac_mul_velocity_to_rad_s<const BITS: usize>(velocity: i32, num: i64, den: i64) -> i64 {
     const TAU_INT_NUM: i64 = 6_283;
     const TAU_INT_DEN: i64 = 1_000;
@@ -128,6 +129,28 @@ fn inverse_park_clarke<const BITS: usize>(
     (pwm_a, pwm_b, pwm_c)
 }
 
+#[inline(always)]
+pub fn controller_cycle<const BITS: usize, M: BldcMotor<BITS>>(
+    kin_data: KinematicEst<BITS>,
+    target_torque: i32,
+) -> (u32, u32, u32) {
+    let control_angle =
+        estimate_control_angle(kin_data.angle, kin_data.velocity, M::PWM_CONTROL_LAG_US);
+
+    let target_q_axis_current_ua = (target_torque * 1_000) / M::TORQUE_COEFFICIENT;
+
+    let (q_axis_voltage_uv, d_axis_voltage_uv) =
+        foc_algorithm::<BITS, M>(target_q_axis_current_ua, 0, kin_data.velocity);
+
+    inverse_park_clarke(
+        control_angle * M::POLE_PAIRS,
+        q_axis_voltage_uv,
+        d_axis_voltage_uv,
+        M::PWM_TOP,
+        M::MAX_VOLTAGE,
+    )
+}
+
 /// Controller task loop, intended to be run in an embassy task
 ///
 /// # Usage example
@@ -149,21 +172,7 @@ pub async fn controller_run<const BITS: usize, M: BldcMotor<BITS>>(
         if let Some(kin_data) = kin_est_rx.try_get()
             && let Some(target_torque) = torque_rx.try_get()
         {
-            let control_angle =
-                estimate_control_angle(kin_data.angle, kin_data.velocity, M::PWM_CONTROL_LAG_US);
-
-            let target_q_axis_current_ua = (target_torque * 1_000) / M::TORQUE_COEFFICIENT;
-
-            let (q_axis_voltage_uv, d_axis_voltage_uv) =
-                foc_algorithm::<BITS, M>(target_q_axis_current_ua, 0, kin_data.velocity);
-
-            let (pwm_a, pwm_b, pwm_c) = inverse_park_clarke(
-                control_angle * M::POLE_PAIRS,
-                q_axis_voltage_uv,
-                d_axis_voltage_uv,
-                M::PWM_TOP,
-                M::MAX_VOLTAGE,
-            );
+            let (pwm_a, pwm_b, pwm_c) = controller_cycle::<BITS, M>(kin_data, target_torque);
 
             motor.set_pwm(pwm_a, pwm_b, pwm_c);
         }
