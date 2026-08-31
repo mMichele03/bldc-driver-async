@@ -26,6 +26,10 @@ pub type KinematicEstReceiver<const BITS: usize> = SimpleWatchReceiver<Kinematic
 pub type KinematicEstSender<const BITS: usize> = SimpleWatchSender<KinematicEst<BITS>>;
 pub type KinematicEstWatch<const BITS: usize> = SimpleWatch<KinematicEst<BITS>>;
 
+pub type TorqueReceiver<const BITS: usize> = SimpleWatchReceiver<i32>;
+pub type TorqueSender<const BITS: usize> = SimpleWatchSender<i32>;
+pub type TorqueWatch<const BITS: usize> = SimpleWatch<i32>;
+
 #[macro_export]
 macro_rules! generate_bldc_driver_tasks {
     ( $encoder:ty, $motor:ty, $flash:ty, $bits:expr, $buffer_len:expr, $max_speed_rpm:expr $(,)? ) => {
@@ -34,6 +38,8 @@ macro_rules! generate_bldc_driver_tasks {
 
         pub static KINEMATIC_EST_WATCH: $crate::KinematicEstWatch<{ $bits }> =
             embassy_sync::watch::Watch::new();
+
+        pub static TORQUE_WATCH: $crate::TorqueWatch<{ $bits }> = embassy_sync::watch::Watch::new();
 
         pub static TELEMETRY_SIGNAL: embassy_sync::signal::Signal<
             embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
@@ -74,13 +80,13 @@ macro_rules! generate_bldc_driver_tasks {
         }
 
         #[embassy_executor::task]
-        async fn controller_task(motor: $motor, receiver: $crate::KinematicEstReceiver<{ $bits }>) {
-            $crate::controller::controller_run::<{ $bits }, $motor>(
-                motor,
-                receiver,
-                <$encoder as bldc_driver_hal::Encoder<{ $bits }>>::ENCODER_PERIOD_US as u32,
-            )
-            .await;
+        async fn controller_task(
+            motor: $motor,
+            kin_est_rx: $crate::KinematicEstReceiver<{ $bits }>,
+            torque_rx: $crate::TorqueReceiver<{ $bits }>,
+        ) {
+            $crate::controller::controller_run::<{ $bits }, $motor>(motor, kin_est_rx, torque_rx)
+                .await;
         }
 
         #[embassy_executor::task]
@@ -143,9 +149,17 @@ macro_rules! generate_bldc_driver_tasks {
                     KINEMATIC_EST_WATCH
                         .receiver()
                         .expect("Kinematic estimation watch run out of receivers"),
+                    TORQUE_WATCH
+                        .receiver()
+                        .expect("Torque watch run out of receivers"),
                 )
                 .expect("Failed to allocate controller task"),
             );
+        }
+
+        pub fn set_torque(target_torque_u_Nm: i32) {
+            let sender = TORQUE_WATCH.sender();
+            sender.send(target_torque_u_Nm);
         }
     };
 }
