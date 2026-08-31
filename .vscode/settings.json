@@ -4,7 +4,15 @@
         "--target",
         "thumbv8m.main-none-eabihf"
     ],
-    "rust-analyzer.files.excludeDirs": [
-        "test-core"
+    "rust-analyzer.cargo.target": "thumbv8m.main-none-eabihf",
+    "rust-analyzer.check.overrideCommand": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--exclude",
+        "test-core",
+        "--message-format=json",
+        "--target",
+        "thumbv8m.main-none-eabihf"
     ]
 }
