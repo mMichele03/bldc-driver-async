@@ -107,6 +107,18 @@ async fn main(spawner: Spawner) -> ! {
 
     telemetry_end.wait().await;
     led.set_high();
+    // Timer::after_secs(2).await;
+
+    // led.set_high();
+    // gimbal_motor::set_torque(0);
+    // Timer::after_secs(2).await;
+
+    // led.set_low();
+    // gimbal_motor::set_torque(-100_000);
+    // Timer::after_secs(2).await;
+
+    // led.set_high();
+    // gimbal_motor::set_torque(0);
 
     loop {
         log::info!("Telemetry end");
