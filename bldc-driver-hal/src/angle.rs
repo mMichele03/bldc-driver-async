@@ -145,6 +145,7 @@ impl<const BITS: usize> core::ops::Add for IntAngle<BITS> {
 impl<const BITS: usize> core::ops::AddAssign for IntAngle<BITS> {
     fn add_assign(&mut self, rhs: Self) {
         self.0 += rhs.0;
+        self.normalize();
     }
 }
 
