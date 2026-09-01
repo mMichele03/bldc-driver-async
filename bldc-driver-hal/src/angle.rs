@@ -88,29 +88,19 @@ impl<const BITS: usize> IntAngle<BITS> {
     const fn sin_lookup(&self) -> i32 {
         let normalized_value = self.normalized().0 as usize;
 
-        // adjust angle precision to sin table one to get the index
-        let mut raw_index = normalized_value >> (BITS - SIN_TABLE_ANGLE_BITS);
+        // Adjust the angle precision to the lookup-table resolution. The result spans
+        // one full rotation split into four quadrants, each containing SIN_TABLE_LENGTH
+        // entries. The final quadrant reduction below must stay within [0, length-1].
+        let raw_index = normalized_value >> (BITS - SIN_TABLE_ANGLE_BITS);
+        let quadrant = raw_index / SIN_TABLE_LENGTH;
+        let offset = raw_index % SIN_TABLE_LENGTH;
 
-        // from 0 to 90 degrees
-        if raw_index < SIN_TABLE_LENGTH {
-            return SIN_TABLE[raw_index] as i32;
+        match quadrant {
+            0 => SIN_TABLE[offset] as i32,
+            1 => SIN_TABLE[SIN_TABLE_LAST_INDEX - offset] as i32,
+            2 => -(SIN_TABLE[offset] as i32),
+            _ => -(SIN_TABLE[SIN_TABLE_LAST_INDEX - offset] as i32),
         }
-
-        // from 90 to 180 degrees
-        raw_index -= SIN_TABLE_LENGTH;
-        if raw_index < SIN_TABLE_LENGTH {
-            return SIN_TABLE[SIN_TABLE_LAST_INDEX - raw_index] as i32;
-        }
-
-        // from 180 to 270 degrees
-        raw_index -= SIN_TABLE_LENGTH;
-        if raw_index < SIN_TABLE_LENGTH {
-            return -(SIN_TABLE[raw_index] as i32);
-        }
-
-        // up to 360 degrees (no more than that because of normalization)
-        raw_index -= SIN_TABLE_LENGTH;
-        return -(SIN_TABLE[SIN_TABLE_LAST_INDEX - raw_index] as i32);
     }
 
     pub const fn sin(&self) -> NormalizedValue<SIN_MAX> {
