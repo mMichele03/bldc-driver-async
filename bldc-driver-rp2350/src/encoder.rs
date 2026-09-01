@@ -48,7 +48,7 @@ impl SpiEncoder {
 // encoder precision fixed to 14 bits
 pub const ENCODER_BITS: usize = 14;
 
-const ENCODER_OFFSET: IntAngle<ENCODER_BITS> = IntAngle::from_raw(7781);
+const ENCODER_OFFSET: IntAngle<ENCODER_BITS> = IntAngle::from_raw(158);
 
 impl Encoder<ENCODER_BITS> for SpiEncoder {
     const ENCODER_FREQUENCY_HZ: u32 = 100_000;
