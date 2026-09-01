@@ -48,6 +48,8 @@ impl SpiEncoder {
 // encoder precision fixed to 14 bits
 pub const ENCODER_BITS: usize = 14;
 
+const ENCODER_OFFSET: IntAngle<ENCODER_BITS> = IntAngle::from_raw(7781);
+
 impl Encoder<ENCODER_BITS> for SpiEncoder {
     const ENCODER_FREQUENCY_HZ: u32 = 100_000;
 
@@ -56,7 +58,7 @@ impl Encoder<ENCODER_BITS> for SpiEncoder {
 
         let buf_tx = [0xffu8; 2];
         let mut buf_rx = [0xffu8; 2];
-
+        // electrical_angle += angle_step;
         self.cs.set_low();
         let _ = self.spi.blocking_transfer(&mut buf_rx, &buf_tx);
         self.cs.set_high();
@@ -70,7 +72,7 @@ impl Encoder<ENCODER_BITS> for SpiEncoder {
         // let end = Instant::now();
 
         EncoderData {
-            angle: -IntAngle::from_raw(angle_raw as i32),
+            angle: -IntAngle::from_raw(angle_raw as i32) - ENCODER_OFFSET,
             timestamp: Instant::now().as_micros(),
         }
     }
