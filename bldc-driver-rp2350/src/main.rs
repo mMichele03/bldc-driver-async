@@ -20,6 +20,7 @@ mod encoder;
 mod flash;
 
 generate_bldc_driver_tasks!(
+    gimbal_motor,
     crate::encoder::SpiEncoder,
     crate::bldc_motor::RpBldcMotor,
     crate::flash::RpFlash,
@@ -95,11 +96,12 @@ async fn main(spawner: Spawner) -> ! {
 
     log::info!("Setup done");
 
-    run_bldc_driver_loop(spawner, motor, encoder, 40);
-    set_torque(100_000);
+    gimbal_motor::run_bldc_driver_loop(spawner, motor, encoder, 40);
+    gimbal_motor::set_torque(100_000);
 
     led.set_low();
-    let telemetry_end = run_telemetry(spawner, flash, TELEMETRY_FREQUENCY, TELEMETRY_DURATION_US);
+    let telemetry_end =
+        gimbal_motor::run_telemetry(spawner, flash, TELEMETRY_FREQUENCY, TELEMETRY_DURATION_US);
 
     log::info!("Everything run");
 

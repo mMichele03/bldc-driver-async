@@ -36,144 +36,147 @@ pub type ControllerDataWatch<const BITS: usize> = SimpleWatch<ControllerData<BIT
 
 #[macro_export]
 macro_rules! generate_bldc_driver_tasks {
-    ( $encoder:ty, $motor:ty, $flash:ty, $bits:expr, $buffer_len:expr, $max_speed_rpm:expr $(,)? ) => {
-        pub static ENCODER_WATCH: $crate::EncoderWatch<{ $bits }> =
-            embassy_sync::watch::Watch::new();
+    ( $mod:ident, $encoder:ty, $motor:ty, $flash:ty, $bits:expr, $buffer_len:expr, $max_speed_rpm:expr $(,)? ) => {
+        mod $mod {
+            pub static ENCODER_WATCH: $crate::EncoderWatch<{ $bits }> =
+                embassy_sync::watch::Watch::new();
 
-        pub static KINEMATIC_EST_WATCH: $crate::KinematicEstWatch<{ $bits }> =
-            embassy_sync::watch::Watch::new();
+            pub static KINEMATIC_EST_WATCH: $crate::KinematicEstWatch<{ $bits }> =
+                embassy_sync::watch::Watch::new();
 
-        pub static TORQUE_WATCH: $crate::TorqueWatch<{ $bits }> = embassy_sync::watch::Watch::new();
+            pub static TORQUE_WATCH: $crate::TorqueWatch<{ $bits }> =
+                embassy_sync::watch::Watch::new();
 
-        pub static CONTROLLER_WATCH: $crate::ControllerDataWatch<{ $bits }> =
-            embassy_sync::watch::Watch::new();
+            pub static CONTROLLER_WATCH: $crate::ControllerDataWatch<{ $bits }> =
+                embassy_sync::watch::Watch::new();
 
-        pub static TELEMETRY_SIGNAL: embassy_sync::signal::Signal<
-            embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
-            (),
-        > = embassy_sync::signal::Signal::new();
-
-        pub struct TelemetryEndSignal(
-            &'static embassy_sync::signal::Signal<
+            pub static TELEMETRY_SIGNAL: embassy_sync::signal::Signal<
                 embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
                 (),
-            >,
-        );
+            > = embassy_sync::signal::Signal::new();
 
-        impl TelemetryEndSignal {
-            pub async fn wait(&self) {
-                self.0.wait().await
+            pub struct TelemetryEndSignal(
+                &'static embassy_sync::signal::Signal<
+                    embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex,
+                    (),
+                >,
+            );
+
+            impl TelemetryEndSignal {
+                pub async fn wait(&self) {
+                    self.0.wait().await
+                }
             }
-        }
 
-        #[embassy_executor::task]
-        async fn encoder_task(encoder: $encoder, sender: $crate::EncoderSender<{ $bits }>) {
-            $crate::encoder::encoder_run::<{ $bits }, $encoder>(encoder, sender).await;
-        }
+            #[embassy_executor::task]
+            async fn encoder_task(encoder: $encoder, sender: $crate::EncoderSender<{ $bits }>) {
+                $crate::encoder::encoder_run::<{ $bits }, $encoder>(encoder, sender).await;
+            }
 
-        #[embassy_executor::task]
-        async fn pll_observer_task(
-            mut receiver: $crate::EncoderReceiver<{ $bits }>,
-            mut sender: $crate::KinematicEstSender<{ $bits }>,
-            bandwidth_hz: i32,
-        ) {
-            $crate::pll::pll_observer_run::<{ $bits }, { $max_speed_rpm }>(
-                receiver,
-                sender,
-                <$encoder as bldc_driver_hal::Encoder<{ $bits }>>::ENCODER_PERIOD_US as i32,
-                bandwidth_hz,
-            )
-            .await;
-        }
+            #[embassy_executor::task]
+            async fn pll_observer_task(
+                mut receiver: $crate::EncoderReceiver<{ $bits }>,
+                mut sender: $crate::KinematicEstSender<{ $bits }>,
+                bandwidth_hz: i32,
+            ) {
+                $crate::pll::pll_observer_run::<{ $bits }, { $max_speed_rpm }>(
+                    receiver,
+                    sender,
+                    <$encoder as bldc_driver_hal::Encoder<{ $bits }>>::ENCODER_PERIOD_US as i32,
+                    bandwidth_hz,
+                )
+                .await;
+            }
 
-        #[embassy_executor::task]
-        async fn controller_task(
-            motor: $motor,
-            kin_est_rx: $crate::KinematicEstReceiver<{ $bits }>,
-            torque_rx: $crate::TorqueReceiver<{ $bits }>,
-            sender: $crate::ControllerDataSender<{ $bits }>,
-        ) {
-            $crate::controller::controller_run::<{ $bits }, $motor>(
-                motor, kin_est_rx, torque_rx, sender,
-            )
-            .await;
-        }
+            #[embassy_executor::task]
+            async fn controller_task(
+                motor: $motor,
+                kin_est_rx: $crate::KinematicEstReceiver<{ $bits }>,
+                torque_rx: $crate::TorqueReceiver<{ $bits }>,
+                sender: $crate::ControllerDataSender<{ $bits }>,
+            ) {
+                $crate::controller::controller_run::<{ $bits }, $motor>(
+                    motor, kin_est_rx, torque_rx, sender,
+                )
+                .await;
+            }
 
-        #[embassy_executor::task]
-        pub async fn telemetry_task(flash: $flash, frequency: u32, duration_us: u64) {
-            $crate::telemetry::telemetry_run::<{ $bits }, { $buffer_len }>(
-                frequency,
-                duration_us,
-                ENCODER_WATCH
-                    .receiver()
-                    .expect("Encoder watch run out of receivers"),
-                KINEMATIC_EST_WATCH
-                    .receiver()
-                    .expect("Kinematic estimation watch run out of receivers"),
-                CONTROLLER_WATCH
-                    .receiver()
-                    .expect("Controller data watch run out of receivers"),
-                flash,
-            )
-            .await;
-
-            TELEMETRY_SIGNAL.signal(());
-        }
-
-        pub fn run_telemetry(
-            spawner: embassy_executor::Spawner,
-            flash: $flash,
-            frequency: u32,
-            duration_us: u64,
-        ) -> TelemetryEndSignal {
-            spawner.spawn(
-                telemetry_task(flash, frequency, duration_us)
-                    .expect("Failed to create telemetry task"),
-            );
-
-            TelemetryEndSignal(&TELEMETRY_SIGNAL)
-        }
-
-        pub fn run_bldc_driver_loop(
-            spawner: embassy_executor::Spawner,
-            motor: $motor,
-            encoder: $encoder,
-            pll_bandwidth_hz: i32,
-        ) {
-            spawner.spawn(
-                encoder_task(encoder, ENCODER_WATCH.sender())
-                    .expect("Failed to allocate encoder task"),
-            );
-
-            spawner.spawn(
-                pll_observer_task(
+            #[embassy_executor::task]
+            pub async fn telemetry_task(flash: $flash, frequency: u32, duration_us: u64) {
+                $crate::telemetry::telemetry_run::<{ $bits }, { $buffer_len }>(
+                    frequency,
+                    duration_us,
                     ENCODER_WATCH
                         .receiver()
                         .expect("Encoder watch run out of receivers"),
-                    KINEMATIC_EST_WATCH.sender(),
-                    pll_bandwidth_hz,
-                )
-                .expect("Failed to allocate pll observer task"),
-            );
-
-            spawner.spawn(
-                controller_task(
-                    motor,
                     KINEMATIC_EST_WATCH
                         .receiver()
                         .expect("Kinematic estimation watch run out of receivers"),
-                    TORQUE_WATCH
+                    CONTROLLER_WATCH
                         .receiver()
-                        .expect("Torque watch run out of receivers"),
-                    CONTROLLER_WATCH.sender(),
+                        .expect("Controller data watch run out of receivers"),
+                    flash,
                 )
-                .expect("Failed to allocate controller task"),
-            );
-        }
+                .await;
 
-        pub fn set_torque(target_torque_u_nm: i32) {
-            let sender = TORQUE_WATCH.sender();
-            sender.send(target_torque_u_nm);
+                TELEMETRY_SIGNAL.signal(());
+            }
+
+            pub fn run_telemetry(
+                spawner: embassy_executor::Spawner,
+                flash: $flash,
+                frequency: u32,
+                duration_us: u64,
+            ) -> TelemetryEndSignal {
+                spawner.spawn(
+                    telemetry_task(flash, frequency, duration_us)
+                        .expect("Failed to create telemetry task"),
+                );
+
+                TelemetryEndSignal(&TELEMETRY_SIGNAL)
+            }
+
+            pub fn run_bldc_driver_loop(
+                spawner: embassy_executor::Spawner,
+                motor: $motor,
+                encoder: $encoder,
+                pll_bandwidth_hz: i32,
+            ) {
+                spawner.spawn(
+                    encoder_task(encoder, ENCODER_WATCH.sender())
+                        .expect("Failed to allocate encoder task"),
+                );
+
+                spawner.spawn(
+                    pll_observer_task(
+                        ENCODER_WATCH
+                            .receiver()
+                            .expect("Encoder watch run out of receivers"),
+                        KINEMATIC_EST_WATCH.sender(),
+                        pll_bandwidth_hz,
+                    )
+                    .expect("Failed to allocate pll observer task"),
+                );
+
+                spawner.spawn(
+                    controller_task(
+                        motor,
+                        KINEMATIC_EST_WATCH
+                            .receiver()
+                            .expect("Kinematic estimation watch run out of receivers"),
+                        TORQUE_WATCH
+                            .receiver()
+                            .expect("Torque watch run out of receivers"),
+                        CONTROLLER_WATCH.sender(),
+                    )
+                    .expect("Failed to allocate controller task"),
+                );
+            }
+
+            pub fn set_torque(target_torque_u_nm: i32) {
+                let sender = TORQUE_WATCH.sender();
+                sender.send(target_torque_u_nm);
+            }
         }
     };
 }
