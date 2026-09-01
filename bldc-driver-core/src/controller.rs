@@ -1,6 +1,7 @@
 use bldc_driver_hal::{BldcMotor, IntAngle};
+use embassy_time::{Duration, Instant, Ticker};
 
-use crate::{KinematicEstReceiver, TorqueReceiver, pll::KinematicEst};
+use crate::{ControllerDataSender, KinematicEstReceiver, TorqueReceiver, pll::KinematicEst};
 
 #[inline(always)]
 pub fn estimate_control_angle<const BITS: usize>(
@@ -157,6 +158,12 @@ pub fn controller_cycle<const BITS: usize, M: BldcMotor<BITS>>(
     )
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct ControllerData<const BITS: usize> {
+    pub dt: u64,
+    pub reg: u32,
+}
+
 /// Controller task loop, intended to be run in an embassy task
 ///
 /// # Usage example
@@ -171,16 +178,36 @@ pub async fn controller_run<const BITS: usize, M: BldcMotor<BITS>>(
     mut motor: M,
     mut kin_est_rx: KinematicEstReceiver<BITS>,
     mut torque_rx: TorqueReceiver<BITS>,
+    sender: ControllerDataSender<BITS>,
 ) -> ! {
+    let mut electrical_angle = IntAngle::<BITS>::new(0);
+    let angle_step = IntAngle::<BITS>::from_raw(4);
+
+    let mut last_time = Instant::now();
+
+    // let mut ticker = Ticker::every(Duration::from_hz(25_000));
+
     loop {
+        let time = Instant::now();
+        let dt = (time - last_time).as_micros();
+
+        // if let Some(kin_data) = kin_est_rx.try_get()
+        //     && let Some(target_torque) = torque_rx.try_get()
+        // {
+        // let (pwm_a, pwm_b, pwm_c) = controller_cycle::<BITS, M>(kin_data, target_torque);
+        let (pwm_a, pwm_b, pwm_c) =
+            inverse_park_clarke(electrical_angle, 1_000, 0, M::PWM_TOP, M::MAX_VOLTAGE);
+
+        motor.set_pwm(pwm_a, pwm_b, pwm_c);
+
+        electrical_angle += angle_step;
+        // }
+
+        last_time = time;
+        // ticker.next().await;
+
         motor.wake_to_set_pwm().await;
 
-        if let Some(kin_data) = kin_est_rx.try_get()
-            && let Some(target_torque) = torque_rx.try_get()
-        {
-            let (pwm_a, pwm_b, pwm_c) = controller_cycle::<BITS, M>(kin_data, target_torque);
-
-            motor.set_pwm(pwm_a, pwm_b, pwm_c);
-        }
+        sender.send(ControllerData { dt, reg: 0 });
     }
 }

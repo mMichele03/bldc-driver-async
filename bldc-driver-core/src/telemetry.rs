@@ -6,6 +6,7 @@ use heapless::Vec;
 use zerocopy::FromBytes;
 use zerocopy::KnownLayout;
 
+use crate::ControllerDataReceiver;
 use crate::EncoderReceiver;
 use crate::KinematicEstReceiver;
 
@@ -70,6 +71,7 @@ pub async fn telemetry_run<const BITS: usize, const BUFFER_LEN: usize>(
     duration_us: u64,
     mut encoder_rx: EncoderReceiver<BITS>,
     mut kin_est_rx: KinematicEstReceiver<BITS>,
+    mut controller_rx: ControllerDataReceiver<BITS>,
     mut flash: impl TelemetryFlash<TelemetryData<BITS>, BUFFER_LEN>,
 ) {
     let mut buffer: Vec<TelemetryData<BITS>, BUFFER_LEN> = Vec::new();
@@ -82,13 +84,18 @@ pub async fn telemetry_run<const BITS: usize, const BUFFER_LEN: usize>(
 
         if let Some(encoder_data) = encoder_rx.try_get() {
             data.measured_angle = encoder_data.angle;
-            data.encoder_timestamp = encoder_data.timestamp as u32;
+            // data.encoder_timestamp = encoder_data.timestamp as u32;
         }
 
         if let Some(kin_est_data) = kin_est_rx.try_get() {
             data.estimated_angle = kin_est_data.angle;
             data.estimated_velocity = kin_est_data.velocity;
-            data.estimation_timestamp = kin_est_data.timestamp as u32;
+            // data.estimation_timestamp = kin_est_data.timestamp as u32;
+        }
+
+        if let Some(controller_data) = controller_rx.try_get() {
+            data.estimation_timestamp = controller_data.dt as u32;
+            data.encoder_timestamp = controller_data.reg;
         }
 
         if buffer.push(data).is_err() {

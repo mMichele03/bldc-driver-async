@@ -23,6 +23,8 @@ for i in range(0, len(data) - RECORD_SIZE + 1, RECORD_SIZE):
         ts, tenc, test, angle, aest, vest, pad = struct.unpack('<QIIiiiI', chunk)
     except struct.error:
         continue
+    if ts > 1000000000:
+        break
     rows.append((ts, tenc, test, angle_to_deg(angle), angle_to_deg(aest), vest))
 
 with open(OUTFILE, 'w') as out:
