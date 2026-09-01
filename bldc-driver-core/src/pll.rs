@@ -38,7 +38,7 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
     /// Creates a new PLL Observer
     /// `period_us`: Sample period in microseconds (e.g., 10us for 100kHz)
     /// `bandwidth_hz`: Filter cutoff frequency (e.g., 200.0)
-    pub fn new(period_us: i32, bandwidth_hz: i32) -> Self {
+    pub fn new(start_angle: IntAngle<BITS>, period_us: i32, bandwidth_hz: i32) -> Self {
         let omega_n = (2.0 * core::f32::consts::PI * bandwidth_hz as f32) as i32;
         let zeta = core::f32::consts::FRAC_1_SQRT_2; // ~0.707
         let overshoot_percent = 105; // with zeta = 0.707
@@ -82,7 +82,7 @@ impl<const BITS: usize, const MAX_SPEED_RPM: i32> PllObserver<BITS, MAX_SPEED_RP
 
         // Create and return pll
         Self {
-            angle_est: 0,
+            angle_est: start_angle.raw_value() << Self::SHIFT,
             velocity_est: 0,
             integral_term: 0,
             kp_num: kp,
@@ -167,7 +167,9 @@ pub async fn pll_observer_run<const BITS: usize, const MAX_SPEED_RPM: i32>(
     period_us: i32,
     bandwidth_hz: i32,
 ) -> ! {
-    let mut pll = PllObserver::<BITS, MAX_SPEED_RPM>::new(period_us, bandwidth_hz);
+    let encoder_data = receiver.get().await;
+    let mut pll =
+        PllObserver::<BITS, MAX_SPEED_RPM>::new(encoder_data.angle, period_us, bandwidth_hz);
 
     loop {
         let encoder_data = receiver.changed().await;
