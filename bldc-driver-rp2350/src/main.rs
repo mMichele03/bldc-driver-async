@@ -95,7 +95,7 @@ async fn main(spawner: Spawner) -> ! {
 
     log::info!("Setup done");
 
-    run_bldc_driver_loop(spawner, motor, encoder, 800);
+    run_bldc_driver_loop(spawner, motor, encoder, 50);
     set_torque(10);
 
     led.set_low();

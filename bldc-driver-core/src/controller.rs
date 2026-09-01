@@ -181,16 +181,9 @@ pub async fn controller_run<const BITS: usize, M: BldcMotor<BITS>>(
     sender: ControllerDataSender<BITS>,
 ) -> ! {
     let mut electrical_angle = IntAngle::<BITS>::new(0);
-    let angle_step = IntAngle::<BITS>::from_raw(4);
-
-    let mut last_time = Instant::now();
-
-    // let mut ticker = Ticker::every(Duration::from_hz(25_000));
+    let angle_step = IntAngle::<BITS>::from_raw(8);
 
     loop {
-        let time = Instant::now();
-        let dt = (time - last_time).as_micros();
-
         // if let Some(kin_data) = kin_est_rx.try_get()
         //     && let Some(target_torque) = torque_rx.try_get()
         // {
@@ -203,11 +196,8 @@ pub async fn controller_run<const BITS: usize, M: BldcMotor<BITS>>(
         electrical_angle += angle_step;
         // }
 
-        last_time = time;
-        // ticker.next().await;
+        sender.send(ControllerData { dt: 0, reg: 0 });
 
         motor.wake_to_set_pwm().await;
-
-        sender.send(ControllerData { dt, reg: 0 });
     }
 }
