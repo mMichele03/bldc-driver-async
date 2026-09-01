@@ -52,6 +52,7 @@ pub trait BldcMotor<const BITS: usize> {
 
     /// Equivalent q-axis inductance of the motor.
     /// It describes how quickly stator current can change and is used in current dynamics.
+    /// It is half the stator inductance.
     /// Stored as integer microhenries, i.e. value = inductance in µH.
     const Q_AXIS_INDUCTANCE: i32;
 

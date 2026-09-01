@@ -39,47 +39,46 @@ pub fn foc_algorithm<const BITS: usize, M: BldcMotor<BITS>>(
     const U_Q_FF: i32 = 0;
     const U_D_FF: i32 = 0;
 
-    // ==========================================
+    // ##########################################
     // Q-Axis Path
-    // ==========================================
-    // 1. Current limit & Feed-forward addition
+    // ##########################################
+    // Current limit & Feed-forward addition
     let i_q_limited = q_axis_current_ma.clamp(-M::MAX_CURRENT, M::MAX_CURRENT);
     let i_q_total = i_q_limited + I_Q_FF;
 
-    // 2. Phase resistance multiplication
+    // Phase resistance multiplication
     let u_q_res = i_q_total * M::PHASE_RESISTANCE / 1_000;
 
-    // 3. Estimated BEMF voltage (Ke * filtered_velocity)
+    // Estimated BEMF voltage (Ke * filtered_velocity)
     let u_bemf =
         frac_mul_velocity_to_rad_s::<BITS>(velocity, M::BACK_EMF_COEFFICIENT as i64, 1) as i32;
 
-    // 4. Sum resistance drop and BEMF
+    // Sum resistance drop and BEMF
     let u_q_interp = u_q_res + u_bemf;
 
-    // 5. Voltage limit & Feed-forward addition
+    // Voltage limit & Feed-forward addition
     let u_q_limited = u_q_interp.clamp(-M::MAX_VOLTAGE, M::MAX_VOLTAGE);
     let u_q = u_q_limited + U_Q_FF;
 
-    // ==========================================
+    // ##########################################
     // D-Axis Path & Cross-Coupling / Lag Voltage
-    // ==========================================
-    // 1. Current limit & Feed-forward addition
+    // ##########################################
+    // Current limit & Feed-forward addition
     let i_d_limited = d_axis_current_ma.clamp(-M::MAX_CURRENT, M::MAX_CURRENT);
     let i_d_total = i_d_limited + I_D_FF;
 
-    // 2. Phase resistance multiplication & Voltage limit
+    // Phase resistance multiplication & Voltage limit
     let u_d_res = i_d_total * M::PHASE_RESISTANCE / 1_000;
     let u_d_limited = u_d_res.clamp(-M::MAX_VOLTAGE, M::MAX_VOLTAGE);
 
-    // // 3. Estimated lag voltage: u_lag = (i_q_total * L_q) * (filtered_velocity * n_pp)
-    // let electrical_velocity = velocity * M::POLE_PAIRS;
-    // let flux_linkage_q = i_q_total * M::Q_AXIS_INDUCTANCE / 1_000_000;
-    // let u_lag =
-    //     frac_mul_velocity_to_rad_s::<BITS>(electrical_velocity, flux_linkage_q as i64, 1) as i32;
+    // Estimated lag voltage: u_lag = (i_q_total * L_q) * (filtered_velocity * n_pp)
+    let electrical_velocity = velocity * M::POLE_PAIRS;
+    let flux_linkage_q = i_q_total * M::Q_AXIS_INDUCTANCE / 1_000_000;
+    let u_lag =
+        frac_mul_velocity_to_rad_s::<BITS>(electrical_velocity, flux_linkage_q as i64, 1) as i32;
 
-    // // 4. Subtract lag voltage and add d-axis voltage feed-forward
-    // let u_d = u_d_limited - u_lag + U_D_FF;
-    let u_d = u_d_limited + U_D_FF;
+    // Subtract lag voltage and add d-axis voltage feed-forward
+    let u_d = u_d_limited - u_lag + U_D_FF;
 
     (u_q, u_d)
 }
