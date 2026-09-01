@@ -160,6 +160,7 @@ impl<const BITS: usize> core::ops::Sub for IntAngle<BITS> {
 impl<const BITS: usize> core::ops::SubAssign for IntAngle<BITS> {
     fn sub_assign(&mut self, rhs: Self) {
         self.0 -= rhs.0;
+        self.normalize();
     }
 }
 
@@ -167,7 +168,7 @@ impl<const BITS: usize> core::ops::Neg for IntAngle<BITS> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        Self(Self::MAX_VALUE - self.0)
+        Self(Self::MAX_VALUE - self.0).normalized()
     }
 }
 
