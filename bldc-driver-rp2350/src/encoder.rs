@@ -70,7 +70,7 @@ impl Encoder<ENCODER_BITS> for SpiEncoder {
         // let end = Instant::now();
 
         EncoderData {
-            angle: IntAngle::from_raw(angle_raw as i32),
+            angle: -IntAngle::from_raw(angle_raw as i32),
             timestamp: Instant::now().as_micros(),
         }
     }
