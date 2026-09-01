@@ -104,8 +104,6 @@ pub fn inverse_park_clarke<const BITS: usize>(
     // 2. Inverse Park Transform (Rotating to Stationary frame)
     let v_alpha = v_d * cos_theta - v_q * sin_theta;
     let v_beta = v_d * sin_theta + v_q * cos_theta;
-    // let v_alpha = v_d * sin_theta + v_q * cos_theta;
-    // let v_beta = -v_d * cos_theta + v_q * sin_theta;
 
     let sqrt_3_over_2 = 0.8660254; // sqrt(3)/2
 
@@ -143,8 +141,8 @@ pub fn controller_cycle<const BITS: usize, M: BldcMotor<BITS>>(
     kin_data: KinematicEst<BITS>,
     target_torque: i32,
 ) -> (u32, u32, u32) {
-    let control_angle =
-        estimate_control_angle(kin_data.angle, kin_data.velocity, M::PWM_CONTROL_LAG_US);
+    let control_angle = kin_data.angle;
+    // estimate_control_angle(kin_data.angle, kin_data.velocity, M::PWM_CONTROL_LAG_US);
 
     let target_q_axis_current_ma = target_torque / M::TORQUE_COEFFICIENT;
 
@@ -193,17 +191,12 @@ pub async fn controller_run<const BITS: usize, M: BldcMotor<BITS>>(
             && let Some(target_torque) = torque_rx.try_get()
         {
             let (pwm_a, pwm_b, pwm_c) = controller_cycle::<BITS, M>(kin_data, target_torque);
-            // let (pwm_a, pwm_b, pwm_c) = inverse_park_clarke(
-            //     IntAngle::<BITS>::new(0),
-            //     0,
-            //     2_000,
-            //     M::PWM_TOP,
-            //     M::MAX_VOLTAGE,
-            // );
+            // let (pwm_a, pwm_b, pwm_c) =
+            //     inverse_park_clarke(electrical_angle, -2_000, 0, M::PWM_TOP, M::MAX_VOLTAGE);
 
             motor.set_pwm(pwm_a, pwm_b, pwm_c);
 
-            // electrical_angle += angle_step;
+            // electrical_angle -= angle_step;
 
             sender.send(ControllerData {
                 dt: 0,
