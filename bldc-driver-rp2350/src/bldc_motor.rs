@@ -77,7 +77,7 @@ impl BldcMotor<ENCODER_BITS> for RpBldcMotor {
     const PHASE_RESISTANCE: i32 = 5_600;
     const Q_AXIS_INDUCTANCE: i32 = 4_600;
     const POLE_PAIRS: i32 = 7;
-    const BACK_EMF_COEFFICIENT: i32 = 47_000_000;
+    const BACK_EMF_COEFFICIENT: i32 = 47;
     const TORQUE_COEFFICIENT: i32 = 70;
     const MAX_VOLTAGE: i32 = 12_000;
     const MAX_CURRENT: i32 = 2_000;

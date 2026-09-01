@@ -62,7 +62,7 @@ pub trait BldcMotor<const BITS: usize> {
 
     /// Back-EMF constant of the motor.
     /// It relates rotor speed to generated voltage and is used for speed/current estimation.
-    /// Stored as integer microvolts per seconds over rad, i.e. value = k_e in µV·s/rad .
+    /// Stored as integer millivolts per seconds over rad, i.e. value = k_e in mV·s/rad .
     const BACK_EMF_COEFFICIENT: i32;
 
     /// Torque constant of the motor.

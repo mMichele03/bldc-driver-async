@@ -1,5 +1,4 @@
 use bldc_driver_hal::{BldcMotor, IntAngle};
-use embassy_time::{Duration, Instant, Ticker};
 
 use crate::{ControllerDataSender, KinematicEstReceiver, TorqueReceiver, pll::KinematicEst};
 
@@ -50,13 +49,12 @@ pub fn foc_algorithm<const BITS: usize, M: BldcMotor<BITS>>(
     // 2. Phase resistance multiplication
     let u_q_res = i_q_total * M::PHASE_RESISTANCE / 1_000;
 
-    // // 3. Estimated BEMF voltage (Ke * filtered_velocity)
-    // let u_bemf =
-    //     frac_mul_velocity_to_rad_s::<BITS>(velocity, M::BACK_EMF_COEFFICIENT as i64, 1) as i32;
+    // 3. Estimated BEMF voltage (Ke * filtered_velocity)
+    let u_bemf =
+        frac_mul_velocity_to_rad_s::<BITS>(velocity, M::BACK_EMF_COEFFICIENT as i64, 1) as i32;
 
-    // // 4. Sum resistance drop and BEMF
-    // let u_q_interp = u_q_res + u_bemf;
-    let u_q_interp = u_q_res;
+    // 4. Sum resistance drop and BEMF
+    let u_q_interp = u_q_res + u_bemf;
 
     // 5. Voltage limit & Feed-forward addition
     let u_q_limited = u_q_interp.clamp(-M::MAX_VOLTAGE, M::MAX_VOLTAGE);
