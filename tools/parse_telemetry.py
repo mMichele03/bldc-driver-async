@@ -20,16 +20,16 @@ rows = []
 for i in range(0, len(data) - RECORD_SIZE + 1, RECORD_SIZE):
     chunk = data[i:i+RECORD_SIZE]
     try:
-        ts, tenc, test, angle, aest, vest, pad = struct.unpack('<QIIiiiI', chunk)
+        ts, angle, aest, vest, pwm_a, pwm_b, pwm_c = struct.unpack('<QiiiIII', chunk)
     except struct.error:
         continue
     if ts > 1000000000 or ts == 0:
         break
-    rows.append((ts, tenc, test, angle_to_deg(angle), angle_to_deg(aest), vest))
+    rows.append((ts, angle_to_deg(angle), angle_to_deg(aest), vest, pwm_a, pwm_b, pwm_c))
 
 with open(OUTFILE, 'w') as out:
-    out.write('ts,enc_ts,est_ts,angle,angle_est,velocity_est\n')
-    for ts, tenc, test, angle, aest, vest in rows:
-        out.write(f'{ts},{tenc},{test},{angle},{aest},{vest}\n')
+    out.write('ts,angle,angle_est,velocity_est,pwm_a,pwm_b,pwm_c\n')
+    for ts, angle, aest, vest, pwm_a, pwm_b, pwm_c in rows:
+        out.write(f'{ts},{angle},{aest},{vest},{pwm_a},{pwm_b},{pwm_c}\n')
 
 print(f'Wrote {len(rows)} rows to {OUTFILE}')

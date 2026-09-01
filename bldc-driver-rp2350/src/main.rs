@@ -95,8 +95,8 @@ async fn main(spawner: Spawner) -> ! {
 
     log::info!("Setup done");
 
-    run_bldc_driver_loop(spawner, motor, encoder, 50);
-    set_torque(10);
+    run_bldc_driver_loop(spawner, motor, encoder, 40);
+    set_torque(-50_000);
 
     led.set_low();
     let telemetry_end = run_telemetry(spawner, flash, TELEMETRY_FREQUENCY, TELEMETRY_DURATION_US);

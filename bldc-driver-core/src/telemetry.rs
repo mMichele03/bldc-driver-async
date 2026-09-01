@@ -16,12 +16,13 @@ use crate::KinematicEstReceiver;
 #[derive(Clone, Copy, FromBytes, KnownLayout)]
 pub struct TelemetryData<const BITS: usize> {
     timestamp: u64,                  // 8 bytes
-    encoder_timestamp: u32,          // 4 bytes
-    estimation_timestamp: u32,       // 4 bytes
     measured_angle: IntAngle<BITS>,  // 4 bytes
     estimated_angle: IntAngle<BITS>, // 4 bytes
     estimated_velocity: i32,         // 4 bytes
-    _pad: u32,                       // 4 bytes -> Total 32 bytes
+    pwm_a: u32,
+    pwm_b: u32,
+    pwm_c: u32,
+    // _pad: u32,                       // 4 bytes -> Total 32 bytes
 }
 
 impl<const BITS: usize> TelemetryData<BITS> {
@@ -45,12 +46,13 @@ impl<const BITS: usize> Default for TelemetryData<BITS> {
     fn default() -> Self {
         Self {
             timestamp: Default::default(),
-            encoder_timestamp: Default::default(),
-            estimation_timestamp: Default::default(),
             measured_angle: Default::default(),
             estimated_angle: Default::default(),
             estimated_velocity: Default::default(),
-            _pad: Default::default(),
+            pwm_a: Default::default(),
+            pwm_b: Default::default(),
+            pwm_c: Default::default(),
+            // _pad: Default::default(),
         }
     }
 }
@@ -94,8 +96,11 @@ pub async fn telemetry_run<const BITS: usize, const BUFFER_LEN: usize>(
         }
 
         if let Some(controller_data) = controller_rx.try_get() {
-            data.estimation_timestamp = controller_data.dt as u32;
-            data.encoder_timestamp = controller_data.reg;
+            // data.estimation_timestamp = controller_data.dt as u32;
+            // data.encoder_timestamp = controller_data.reg;
+            data.pwm_a = controller_data.pwm_a;
+            data.pwm_b = controller_data.pwm_b;
+            data.pwm_c = controller_data.pwm_c;
         }
 
         if buffer.push(data).is_err() {

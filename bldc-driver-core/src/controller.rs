@@ -104,6 +104,8 @@ pub fn inverse_park_clarke<const BITS: usize>(
     // 2. Inverse Park Transform (Rotating to Stationary frame)
     let v_alpha = v_d * cos_theta - v_q * sin_theta;
     let v_beta = v_d * sin_theta + v_q * cos_theta;
+    // let v_alpha = v_d * sin_theta + v_q * cos_theta;
+    // let v_beta = -v_d * cos_theta + v_q * sin_theta;
 
     let sqrt_3_over_2 = 0.8660254; // sqrt(3)/2
 
@@ -162,6 +164,9 @@ pub fn controller_cycle<const BITS: usize, M: BldcMotor<BITS>>(
 pub struct ControllerData<const BITS: usize> {
     pub dt: u64,
     pub reg: u32,
+    pub pwm_a: u32,
+    pub pwm_b: u32,
+    pub pwm_c: u32,
 }
 
 /// Controller task loop, intended to be run in an embassy task
@@ -180,23 +185,34 @@ pub async fn controller_run<const BITS: usize, M: BldcMotor<BITS>>(
     mut torque_rx: TorqueReceiver<BITS>,
     sender: ControllerDataSender<BITS>,
 ) -> ! {
-    let mut electrical_angle = IntAngle::<BITS>::new(0);
-    let angle_step = IntAngle::<BITS>::from_raw(8);
+    // let mut electrical_angle = IntAngle::<BITS>::new(0);
+    // let angle_step = IntAngle::<BITS>::from_raw(8);
 
     loop {
-        // if let Some(kin_data) = kin_est_rx.try_get()
-        //     && let Some(target_torque) = torque_rx.try_get()
-        // {
-        // let (pwm_a, pwm_b, pwm_c) = controller_cycle::<BITS, M>(kin_data, target_torque);
-        let (pwm_a, pwm_b, pwm_c) =
-            inverse_park_clarke(electrical_angle, 1_000, 0, M::PWM_TOP, M::MAX_VOLTAGE);
+        if let Some(kin_data) = kin_est_rx.try_get()
+            && let Some(target_torque) = torque_rx.try_get()
+        {
+            let (pwm_a, pwm_b, pwm_c) = controller_cycle::<BITS, M>(kin_data, target_torque);
+            // let (pwm_a, pwm_b, pwm_c) = inverse_park_clarke(
+            //     IntAngle::<BITS>::new(0),
+            //     0,
+            //     2_000,
+            //     M::PWM_TOP,
+            //     M::MAX_VOLTAGE,
+            // );
 
-        motor.set_pwm(pwm_a, pwm_b, pwm_c);
+            motor.set_pwm(pwm_a, pwm_b, pwm_c);
 
-        electrical_angle += angle_step;
-        // }
+            // electrical_angle += angle_step;
 
-        sender.send(ControllerData { dt: 0, reg: 0 });
+            sender.send(ControllerData {
+                dt: 0,
+                reg: 0,
+                pwm_a,
+                pwm_b,
+                pwm_c,
+            });
+        }
 
         motor.wake_to_set_pwm().await;
     }
