@@ -29,8 +29,8 @@ pub const fn frac_mul_velocity_to_rad_s<const BITS: usize>(
 
 #[inline(always)]
 pub fn foc_algorithm<const BITS: usize, M: BldcMotor<BITS>>(
-    q_axis_current_ua: i32,
-    d_axis_current_ua: i32,
+    q_axis_current_ma: i32,
+    d_axis_current_ma: i32,
     velocity: i32,
 ) -> (i32, i32) {
     // Feed-forwards
@@ -43,7 +43,7 @@ pub fn foc_algorithm<const BITS: usize, M: BldcMotor<BITS>>(
     // Q-Axis Path
     // ==========================================
     // 1. Current limit & Feed-forward addition
-    let i_q_limited = q_axis_current_ua.clamp(-M::MAX_CURRENT, M::MAX_CURRENT);
+    let i_q_limited = q_axis_current_ma.clamp(-M::MAX_CURRENT, M::MAX_CURRENT);
     let i_q_total = i_q_limited + I_Q_FF;
 
     // 2. Phase resistance multiplication
@@ -65,7 +65,7 @@ pub fn foc_algorithm<const BITS: usize, M: BldcMotor<BITS>>(
     // D-Axis Path & Cross-Coupling / Lag Voltage
     // ==========================================
     // 1. Current limit & Feed-forward addition
-    let i_d_limited = d_axis_current_ua.clamp(-M::MAX_CURRENT, M::MAX_CURRENT);
+    let i_d_limited = d_axis_current_ma.clamp(-M::MAX_CURRENT, M::MAX_CURRENT);
     let i_d_total = i_d_limited + I_D_FF;
 
     // 2. Phase resistance multiplication & Voltage limit
@@ -88,8 +88,8 @@ pub fn foc_algorithm<const BITS: usize, M: BldcMotor<BITS>>(
 #[inline(always)]
 pub fn inverse_park_clarke<const BITS: usize>(
     electrical_angle: IntAngle<BITS>,
-    q_axis_voltage_uv: i32,
-    d_axis_voltage_uv: i32,
+    q_axis_voltage_mv: i32,
+    d_axis_voltage_mv: i32,
     pwm_top: u32,
     max_voltage_uv: i32,
 ) -> (u32, u32, u32) {
@@ -97,8 +97,8 @@ pub fn inverse_park_clarke<const BITS: usize>(
     let sin_theta = electrical_angle.sin().scaled(255) as f32 / 255.0;
     let cos_theta = electrical_angle.cos().scaled(255) as f32 / 255.0;
 
-    let v_q = q_axis_voltage_uv as f32;
-    let v_d = d_axis_voltage_uv as f32;
+    let v_q = q_axis_voltage_mv as f32;
+    let v_d = d_axis_voltage_mv as f32;
 
     // 2. Inverse Park Transform (Rotating to Stationary frame)
     let v_alpha = v_d * cos_theta - v_q * sin_theta;
@@ -143,15 +143,15 @@ pub fn controller_cycle<const BITS: usize, M: BldcMotor<BITS>>(
     let control_angle =
         estimate_control_angle(kin_data.angle, kin_data.velocity, M::PWM_CONTROL_LAG_US);
 
-    let target_q_axis_current_ua = target_torque / M::TORQUE_COEFFICIENT;
+    let target_q_axis_current_ma = target_torque / M::TORQUE_COEFFICIENT;
 
-    let (q_axis_voltage_uv, d_axis_voltage_uv) =
-        foc_algorithm::<BITS, M>(target_q_axis_current_ua, 0, kin_data.velocity);
+    let (q_axis_voltage_mv, d_axis_voltage_mv) =
+        foc_algorithm::<BITS, M>(target_q_axis_current_ma, 0, kin_data.velocity);
 
     inverse_park_clarke(
         control_angle * M::POLE_PAIRS,
-        q_axis_voltage_uv,
-        d_axis_voltage_uv,
+        q_axis_voltage_mv,
+        d_axis_voltage_mv,
         M::PWM_TOP,
         M::MAX_VOLTAGE,
     )

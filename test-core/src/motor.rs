@@ -9,8 +9,8 @@ impl BldcMotor<BITS> for TestMotor {
     const POLE_PAIRS: i32 = 7;
     const BACK_EMF_COEFFICIENT: i32 = 47_000_000;
     const TORQUE_COEFFICIENT: i32 = 70;
-    const MAX_VOLTAGE: i32 = 12_000_000;
-    const MAX_CURRENT: i32 = 2_000_000;
+    const MAX_VOLTAGE: i32 = 12_000;
+    const MAX_CURRENT: i32 = 2_000;
 
     const PWM_TOP: u32 = 1250;
     const PWM_FREQ: u32 = 60000;

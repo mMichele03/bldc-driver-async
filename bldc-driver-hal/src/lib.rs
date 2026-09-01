@@ -71,11 +71,11 @@ pub trait BldcMotor<const BITS: usize> {
     const TORQUE_COEFFICIENT: i32;
 
     /// Maximum allowed phase voltage for the motor driver.
-    /// Stored as integer microvolts, i.e. value = voltage in µV.
+    /// Stored as integer millivolts, i.e. value = voltage in mV.
     const MAX_VOLTAGE: i32;
 
     /// Maximum allowed motor current.
-    /// Stored as integer microamps, i.e. value = current in µA.
+    /// Stored as integer milliamps, i.e. value = current in mA.
     const MAX_CURRENT: i32;
 
     //  #############################  PWM  #############################
