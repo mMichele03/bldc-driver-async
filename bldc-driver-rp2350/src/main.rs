@@ -38,8 +38,8 @@ async fn logger_task(driver: usb::Driver<'static, USB>) {
     embassy_usb_logger::run!(1024, log::LevelFilter::Info, driver);
 }
 
-const TELEMETRY_FREQUENCY: u32 = 1_000;
-const TELEMETRY_DURATION_US: u64 = 2_000_000;
+const TELEMETRY_FREQUENCY: u32 = 100;
+const TELEMETRY_DURATION_US: u64 = 4_000_000;
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> ! {
