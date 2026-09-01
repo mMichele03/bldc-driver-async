@@ -167,7 +167,7 @@ impl<const BITS: usize> core::ops::Neg for IntAngle<BITS> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        Self(-self.0)
+        Self(Self::MAX_VALUE - self.0)
     }
 }
 
