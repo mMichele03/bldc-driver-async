@@ -14,9 +14,9 @@ A compact, async, no_std BLDC control stack for embedded systems. The project is
   - [Table of contents](#table-of-contents)
   - [Project scope](#project-scope)
   - [Driver features](#driver-features)
-  - [FOC controller overview](#foc-controller-overview)
+  - [Architecture overview](#architecture-overview)
     - [Tasks](#tasks)
-    - [Algorithm](#algorithm)
+    - [FOC Algorithm](#foc-algorithm)
   - [Workspace structure](#workspace-structure)
   - [Test hardware](#test-hardware)
   - [The simplest and cheapest driver possible, docs here](#the-simplest-and-cheapest-driver-possible-docs-here)
@@ -67,15 +67,21 @@ The current implementation is centered on the Raspberry Pi RP2350 and the AS5048
 - Implementation of a Type-II PLL: `PllObserver` for angle and velocity estimation from encoder samples.
 - On-board telemetry capture through flash and CSV export tooling.
 
-## FOC controller overview
+## Architecture overview
 
 ### Tasks
 
 ![FOC controller tasks overview](/docs/tasks.png "FOC controller tasks overview")
 
-### Algorithm
+The main task initializes the hardware, starts the encoder, PLL, controller, and optional telemetry tasks, and sends the requested torque through a watch channel. The encoder task samples the sensor at high frequency; the PLL task converts those samples into estimated angle and velocity; and the controller task uses those estimates to update the three-phase PWM output. If present, the telemetry task observes the watches at a lower rate and writes a capture to flash when the run is complete.
+
+### FOC Algorithm
 
 ![](https://docs.simplefoc.com/extras/Images/torque_control/ec0_b.png)
+
+Most of our FOC algorithms documentation comes from SimpleFOC docs, as it is explained in detail very clearly, like in this diagram for the [estimated-current FOC](https://docs.simplefoc.com/voltage_torque_control#level-3-inductance-lag-compensation-r--kv--l) signal path that we implemented.
+
+The requested q-axis current is limited and converted into a voltage using the phase resistance, estimated back-EMF, and q-axis feed-forward terms. The d-axis current is normally zero, while its voltage path includes the resistance, voltage limit, feed-forward, and estimated lag-voltage compensation from motor inductance per speed. Eventually, inverse Park and Clarke transforms convert the d/q voltages and electrical angle into phase voltages and then PWMs (with SVPWM calculations), which the BLDC driver applies to the motor.
 
 ---
 
@@ -244,8 +250,13 @@ Notable observations from the captured samples:
 - the board successfully reaches high PWM duty and high estimated velocities under a target torque condition,
 - the telemetry pipeline is working end-to-end, from sensor read → PLL estimation → controller output → flash serialization → CSV export.
 
-![Controller algorithm PWM generation](/docs/bemf.png "Controller algorithm PWM generation")
-PWM generation placeholder.
+![PWM plot at low positive torque](/docs/real-pwm.png "PWM plot at low positive torque")
+
+![Complete run at high positive and negative torque](/docs/bemf.png "Complete run at high positive and negative torque")
+
+https://github.com/user-attachments/assets/2d24976e-bf17-4fcb-9dd1-84e7d065c5d6
+
+![PWM plot at low positive torque](/docs/video-telemetry.png "PWM plot at low positive torque")
 
 Examples from the data:
 
