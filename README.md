@@ -141,7 +141,7 @@ What each crate is doing:
 
 - ### RP2350
 
-  - MCU: Raspberry Pi RP2350
+  - MCU: [Raspberry Pi RP2350](https://www.raspberrypi.com/products/rp2350/)
   - Architecture: dual-core Arm Cortex-M33 / Cortex-M33 plus a secure core model
   - Target: embedded high-speed PWM + DMA + SPI control
   - Used in this repo as the main controller and logger target
