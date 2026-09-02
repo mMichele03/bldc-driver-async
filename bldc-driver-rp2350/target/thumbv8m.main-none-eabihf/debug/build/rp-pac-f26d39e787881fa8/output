@@ -1,3 +1,0 @@
-cargo:rustc-link-search=/home/mmic/workspace/bldc-driver-async/bldc-driver-core/target/thumbv8m.main-none-eabihf/debug/build/rp-pac-f26d39e787881fa8/out
-cargo:rerun-if-changed=device.x
-cargo:rerun-if-changed=build.rs
