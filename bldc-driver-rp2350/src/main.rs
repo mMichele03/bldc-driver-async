@@ -40,7 +40,7 @@ async fn logger_task(driver: usb::Driver<'static, USB>) {
 }
 
 const TELEMETRY_FREQUENCY: u32 = 100;
-const TELEMETRY_DURATION_US: u64 = 4_000_000;
+const TELEMETRY_DURATION_US: u64 = 8_000_000;
 
 #[embassy_executor::main]
 async fn main(spawner: Spawner) -> ! {
@@ -97,28 +97,45 @@ async fn main(spawner: Spawner) -> ! {
     log::info!("Setup done");
 
     gimbal_motor::run_bldc_driver_loop(spawner, motor, encoder, 40);
-    gimbal_motor::set_torque(100_000);
 
-    led.set_low();
     let telemetry_end =
         gimbal_motor::run_telemetry(spawner, flash, TELEMETRY_FREQUENCY, TELEMETRY_DURATION_US);
 
     log::info!("Everything run");
 
-    telemetry_end.wait().await;
+    led.set_low();
+    gimbal_motor::set_torque(20_000);
+    Timer::after_secs(1).await;
+
     led.set_high();
-    // Timer::after_secs(2).await;
+    gimbal_motor::set_torque(0);
+    Timer::after_secs(1).await;
 
-    // led.set_high();
-    // gimbal_motor::set_torque(0);
-    // Timer::after_secs(2).await;
+    led.set_low();
+    gimbal_motor::set_torque(-20_000);
+    Timer::after_secs(1).await;
 
-    // led.set_low();
-    // gimbal_motor::set_torque(-100_000);
-    // Timer::after_secs(2).await;
+    led.set_high();
+    gimbal_motor::set_torque(0);
+    Timer::after_secs(1).await;
 
-    // led.set_high();
-    // gimbal_motor::set_torque(0);
+    led.set_low();
+    gimbal_motor::set_torque(100_000);
+    Timer::after_secs(1).await;
+
+    led.set_high();
+    gimbal_motor::set_torque(0);
+    Timer::after_secs(1).await;
+
+    led.set_low();
+    gimbal_motor::set_torque(-100_000);
+    Timer::after_secs(1).await;
+
+    led.set_high();
+    gimbal_motor::set_torque(0);
+
+    telemetry_end.wait().await;
+    led.set_low();
 
     loop {
         log::info!("Telemetry end");
